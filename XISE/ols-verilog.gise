@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<generated_project xmlns="http://www.xilinx.com/XMLSchema" xmlns:xil_pn="http://www.xilinx.com/XMLSchema">
+
+  <!--                                                          -->
+
+  <!--             For tool use only. Do not edit.              -->
+
+  <!--                                                          -->
+
+  <!-- ProjectNavigator created generated project file.         -->
+
+  <!-- For use in tracking generated file and other information -->
+
+  <!-- allowing preservation of process status.                 -->
+
+  <!--                                                          -->
+
+  <!-- Copyright (c) 1995-2010 Xilinx, Inc.  All rights reserved. -->
+
+  <version xmlns="http://www.xilinx.com/XMLSchema">11.1</version>
+
+  <sourceproject xmlns="http://www.xilinx.com/XMLSchema" xil_pn:fileType="FILE_XISE" xil_pn:name="ols-verilog.xise"/>
+
+  <files xmlns="http://www.xilinx.com/XMLSchema">
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_NGDBUILD_LOG" xil_pn:name="Logic_Sniffer.bld"/>
+    <file xil_pn:fileType="FILE_CMD_LOG" xil_pn:name="Logic_Sniffer.cmd_log"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_LSO" xil_pn:name="Logic_Sniffer.lso"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_IMPACT_MISC" xil_pn:name="Logic_Sniffer.mcs"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_NCD" xil_pn:name="Logic_Sniffer.ncd" xil_pn:subbranch="Par"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_NGC" xil_pn:name="Logic_Sniffer.ngc"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_NGD" xil_pn:name="Logic_Sniffer.ngd"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_NGR" xil_pn:name="Logic_Sniffer.ngr"/>
+    <file xil_pn:fileType="FILE_PAD_MISC" xil_pn:name="Logic_Sniffer.pad"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_PAR_REPORT" xil_pn:name="Logic_Sniffer.par" xil_pn:subbranch="Par"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_PCF" xil_pn:name="Logic_Sniffer.pcf" xil_pn:subbranch="Map"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_XST_PROJECT" xil_pn:name="Logic_Sniffer.prj"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_IMPACT_MISC" xil_pn:name="Logic_Sniffer.prm"/>
+    <file xil_pn:fileType="FILE_TRCE_MISC" xil_pn:name="Logic_Sniffer.ptwx"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_XST_STX" xil_pn:name="Logic_Sniffer.stx"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_XST_REPORT" xil_pn:name="Logic_Sniffer.syr"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_TIMING_TXT_REPORT" xil_pn:name="Logic_Sniffer.twr" xil_pn:subbranch="Par"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_TIMING_XML_REPORT" xil_pn:name="Logic_Sniffer.twx" xil_pn:subbranch="Par"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_UNROUTES" xil_pn:name="Logic_Sniffer.unroutes" xil_pn:subbranch="Par"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_BITGEN_REPORT" xil_pn:name="Logic_Sniffer.ut" xil_pn:subbranch="FPGAConfiguration"/>
+    <file xil_pn:fileType="FILE_XPI" xil_pn:name="Logic_Sniffer.xpi"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_XST" xil_pn:name="Logic_Sniffer.xst"/>
+    <file xil_pn:fileType="FILE_HTML" xil_pn:name="Logic_Sniffer_envsettings.html"/>
+    <file xil_pn:fileType="FILE_NCD" xil_pn:name="Logic_Sniffer_guide.ncd" xil_pn:origination="imported"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_MAP_REPORT" xil_pn:name="Logic_Sniffer_map.map" xil_pn:subbranch="Map"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_MAP_REPORT" xil_pn:name="Logic_Sniffer_map.mrp" xil_pn:subbranch="Map"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_NCD" xil_pn:name="Logic_Sniffer_map.ncd" xil_pn:subbranch="Map"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_NGM" xil_pn:name="Logic_Sniffer_map.ngm" xil_pn:subbranch="Map"/>
+    <file xil_pn:fileType="FILE_XRPT" xil_pn:name="Logic_Sniffer_map.xrpt"/>
+    <file xil_pn:fileType="FILE_XRPT" xil_pn:name="Logic_Sniffer_ngdbuild.xrpt"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_PAD_EXCEL_REPORT" xil_pn:name="Logic_Sniffer_pad.csv" xil_pn:subbranch="Par"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_PAD_TXT_REPORT" xil_pn:name="Logic_Sniffer_pad.txt" xil_pn:subbranch="Par"/>
+    <file xil_pn:fileType="FILE_XRPT" xil_pn:name="Logic_Sniffer_par.xrpt"/>
+    <file xil_pn:fileType="FILE_HTML" xil_pn:name="Logic_Sniffer_summary.html"/>
+    <file xil_pn:fileType="FILE_FITTER_REPORT" xil_pn:name="Logic_Sniffer_summary.xml"/>
+    <file xil_pn:fileType="FILE_WEBTALK" xil_pn:name="Logic_Sniffer_usage.xml"/>
+    <file xil_pn:fileType="FILE_XRPT" xil_pn:name="Logic_Sniffer_xst.xrpt"/>
+    <file xil_pn:fileType="FILE_DIRECTORY" xil_pn:name="_ngo"/>
+    <file xil_pn:fileType="FILE_XMSGS" xil_pn:name="_xmsgs/bitgen.xmsgs"/>
+    <file xil_pn:fileType="FILE_XMSGS" xil_pn:name="_xmsgs/map.xmsgs"/>
+    <file xil_pn:fileType="FILE_XMSGS" xil_pn:name="_xmsgs/ngdbuild.xmsgs"/>
+    <file xil_pn:fileType="FILE_XMSGS" xil_pn:name="_xmsgs/par.xmsgs"/>
+    <file xil_pn:fileType="FILE_XMSGS" xil_pn:name="_xmsgs/trce.xmsgs"/>
+    <file xil_pn:fileType="FILE_XMSGS" xil_pn:name="_xmsgs/xst.xmsgs"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_BITGEN_REPORT" xil_pn:name="logic_sniffer.bgn" xil_pn:subbranch="FPGAConfiguration"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_BIT" xil_pn:name="logic_sniffer.bit" xil_pn:subbranch="FPGAConfiguration"/>
+    <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_BITGEN_DRC" xil_pn:name="logic_sniffer.drc" xil_pn:subbranch="FPGAConfiguration"/>
+    <file xil_pn:fileType="FILE_HTML" xil_pn:name="usage_statistics_webtalk.html"/>
+    <file xil_pn:fileType="FILE_LOG" xil_pn:name="webtalk.log"/>
+    <file xil_pn:fileType="FILE_FITTER_REPORT" xil_pn:name="webtalk_pn.xml"/>
+    <file xil_pn:fileType="FILE_DIRECTORY" xil_pn:name="xlnx_auto_0_xdb"/>
+    <file xil_pn:fileType="FILE_DIRECTORY" xil_pn:name="xst"/>
+  </files>
+
+  <transforms xmlns="http://www.xilinx.com/XMLSchema">
+    <transform xil_pn:end_ts="1295955333" xil_pn:name="TRAN_copyInitialToXSTAbstractSynthesis" xil_pn:start_ts="1295955333">
+      <status xil_pn:value="SuccessfullyRun"/>
+      <status xil_pn:value="ReadyToRun"/>
+    </transform>
+    <transform xil_pn:end_ts="1295955333" xil_pn:name="TRAN_schematicsToHdl" xil_pn:prop_ck="8436051669025298099" xil_pn:start_ts="1295955333">
+      <status xil_pn:value="SuccessfullyRun"/>
+      <status xil_pn:value="ReadyToRun"/>
+    </transform>
+    <transform xil_pn:end_ts="1296206399" xil_pn:name="TRAN_regenerateCores" xil_pn:prop_ck="6243666657987698641" xil_pn:start_ts="1296206399">
+      <status xil_pn:value="SuccessfullyRun"/>
+      <status xil_pn:value="ReadyToRun"/>
+    </transform>
+    <transform xil_pn:end_ts="1295955333" xil_pn:name="TRAN_SubProjectAbstractToPreProxy" xil_pn:start_ts="1295955333">
+      <status xil_pn:value="SuccessfullyRun"/>
+      <status xil_pn:value="ReadyToRun"/>
+    </transform>
+    <transform xil_pn:end_ts="1295955333" xil_pn:name="TRAN_xawsTohdl" xil_pn:prop_ck="-1998823859869161935" xil_pn:start_ts="1295955333">
+      <status xil_pn:value="SuccessfullyRun"/>
+      <status xil_pn:value="ReadyToRun"/>
+    </transform>
+    <transform xil_pn:end_ts="1295955333" xil_pn:name="TRAN_SubProjectPreToStructuralProxy" xil_pn:prop_ck="5199527252420087910" xil_pn:start_ts="1295955333">
+      <status xil_pn:value="SuccessfullyRun"/>
+      <status xil_pn:value="ReadyToRun"/>
+    </transform>
+    <transform xil_pn:end_ts="1296206399" xil_pn:name="TRAN_platgen" xil_pn:prop_ck="8403410184713433883" xil_pn:start_ts="1296206399">
+      <status xil_pn:value="SuccessfullyRun"/>
+      <status xil_pn:value="ReadyToRun"/>
+    </transform>
+    <transform xil_pn:end_ts="1296453663" xil_pn:in_ck="8134416758143004718" xil_pn:name="TRANEXT_xstsynthesize_spartan3e" xil_pn:prop_ck="6006897291719920344" xil_pn:start_ts="1296453627">
+      <status xil_pn:value="SuccessfullyRun"/>
+      <status xil_pn:value="WarningsGenerated"/>
+      <status xil_pn:value="ReadyToRun"/>
+      <status xil_pn:value="OutOfDateForOutputs"/>
+      <status xil_pn:value="OutputChanged"/>
+      <outfile xil_pn:name="Logic_Sniffer.lso"/>
+      <outfile xil_pn:name="Logic_Sniffer.ngc"/>
+      <outfile xil_pn:name="Logic_Sniffer.ngr"/>
+      <outfile xil_pn:name="Logic_Sniffer.prj"/>
+      <outfile xil_pn:name="Logic_Sniffer.stx"/>
+      <outfile xil_pn:name="Logic_Sniffer.syr"/>
+      <outfile xil_pn:name="Logic_Sniffer.xst"/>
+      <outfile xil_pn:name="Logic_Sniffer_xst.xrpt"/>
+      <outfile xil_pn:name="_xmsgs/xst.xmsgs"/>
+      <outfile xil_pn:name="webtalk_pn.xml"/>
+      <outfile xil_pn:name="xst"/>
+    </transform>
+    <transform xil_pn:end_ts="1296206750" xil_pn:in_ck="8020061354255011302" xil_pn:name="TRAN_compileBCD2" xil_pn:prop_ck="-4958352515780938916" xil_pn:start_ts="1296206750">
+      <status xil_pn:value="SuccessfullyRun"/>
+      <status xil_pn:value="ReadyToRun"/>
+    </transform>
+    <transform xil_pn:end_ts="1296453669" xil_pn:in_ck="-811394816343158138" xil_pn:name="TRANEXT_ngdbuild_FPGA" xil_pn:prop_ck="56755023181429492" xil_pn:start_ts="1296453663">
+      <status xil_pn:value="SuccessfullyRun"/>
+      <status xil_pn:value="ReadyToRun"/>
+      <outfile xil_pn:name="Logic_Sniffer.bld"/>
+      <outfile xil_pn:name="Logic_Sniffer.ngd"/>
+      <outfile xil_pn:name="Logic_Sniffer_ngdbuild.xrpt"/>
+      <outfile xil_pn:name="_ngo"/>
+      <outfile xil_pn:name="_xmsgs/ngdbuild.xmsgs"/>
+    </transform>
+    <transform xil_pn:end_ts="1296453677" xil_pn:in_ck="2079953557588276391" xil_pn:name="TRANEXT_map_spartan3" xil_pn:prop_ck="2327475146552349993" xil_pn:start_ts="1296453669">
+      <status xil_pn:value="SuccessfullyRun"/>
+      <status xil_pn:value="ReadyToRun"/>
+      <status xil_pn:value="OutOfDateForOutputs"/>
+      <status xil_pn:value="OutputChanged"/>
+      <outfile xil_pn:name="Logic_Sniffer.pcf"/>
+      <outfile xil_pn:name="Logic_Sniffer_map.map"/>
+      <outfile xil_pn:name="Logic_Sniffer_map.mrp"/>
+      <outfile xil_pn:name="Logic_Sniffer_map.ncd"/>
+      <outfile xil_pn:name="Logic_Sniffer_map.ngm"/>
+      <outfile xil_pn:name="Logic_Sniffer_map.xrpt"/>
+      <outfile xil_pn:name="Logic_Sniffer_summary.xml"/>
+      <outfile xil_pn:name="Logic_Sniffer_usage.xml"/>
+      <outfile xil_pn:name="_xmsgs/map.xmsgs"/>
+    </transform>
+    <transform xil_pn:end_ts="1296453733" xil_pn:in_ck="4394347025183138272" xil_pn:name="TRANEXT_par_spartan3" xil_pn:prop_ck="3129755442398015208" xil_pn:start_ts="1296453677">
+      <status xil_pn:value="SuccessfullyRun"/>
+      <status xil_pn:value="ReadyToRun"/>
+      <outfile xil_pn:name="Logic_Sniffer.ncd"/>
+      <outfile xil_pn:name="Logic_Sniffer.pad"/>
+      <outfile xil_pn:name="Logic_Sniffer.par"/>
+      <outfile xil_pn:name="Logic_Sniffer.ptwx"/>
+      <outfile xil_pn:name="Logic_Sniffer.unroutes"/>
+      <outfile xil_pn:name="Logic_Sniffer.xpi"/>
+      <outfile xil_pn:name="Logic_Sniffer_pad.csv"/>
+      <outfile xil_pn:name="Logic_Sniffer_pad.txt"/>
+      <outfile xil_pn:name="Logic_Sniffer_par.xrpt"/>
+      <outfile xil_pn:name="_xmsgs/par.xmsgs"/>
+    </transform>
+    <transform xil_pn:end_ts="1296453751" xil_pn:in_ck="8020061354255003677" xil_pn:name="TRANEXT_bitFile_spartan3e" xil_pn:prop_ck="287829442711806529" xil_pn:start_ts="1296453733">
+      <status xil_pn:value="SuccessfullyRun"/>
+      <status xil_pn:value="ReadyToRun"/>
+      <outfile xil_pn:name="Logic_Sniffer.ut"/>
+      <outfile xil_pn:name="_xmsgs/bitgen.xmsgs"/>
+      <outfile xil_pn:name="logic_sniffer.bgn"/>
+      <outfile xil_pn:name="logic_sniffer.bit"/>
+      <outfile xil_pn:name="logic_sniffer.drc"/>
+      <outfile xil_pn:name="webtalk.log"/>
+      <outfile xil_pn:name="webtalk_pn.xml"/>
+    </transform>
+    <transform xil_pn:end_ts="1296208216" xil_pn:in_ck="-3660994722781469145" xil_pn:name="TRAN_configureTargetDevice" xil_pn:prop_ck="6181279264766210374" xil_pn:start_ts="1296208214">
+      <status xil_pn:value="SuccessfullyRun"/>
+      <status xil_pn:value="ReadyToRun"/>
+      <status xil_pn:value="OutOfDateForInputs"/>
+      <status xil_pn:value="OutOfDateForOutputs"/>
+      <status xil_pn:value="InputChanged"/>
+      <status xil_pn:value="OutputChanged"/>
+      <outfile xil_pn:name="Logic_Sniffer.mcs"/>
+      <outfile xil_pn:name="Logic_Sniffer.prm"/>
+    </transform>
+    <transform xil_pn:end_ts="1295982458" xil_pn:in_ck="-3660994722781469145" xil_pn:name="TRAN_genImpactFile" xil_pn:prop_ck="2853641105018904270" xil_pn:start_ts="1295982458">
+      <status xil_pn:value="FailedRun"/>
+      <status xil_pn:value="ReadyToRun"/>
+      <status xil_pn:value="OutOfDateForInputs"/>
+      <status xil_pn:value="OutOfDateForProperties"/>
+      <status xil_pn:value="InputChanged"/>
+    </transform>
+    <transform xil_pn:end_ts="1296453733" xil_pn:in_ck="7803593746539502499" xil_pn:name="TRAN_postRouteTrce" xil_pn:prop_ck="445577401284416186" xil_pn:start_ts="1296453727">
+      <status xil_pn:value="SuccessfullyRun"/>
+      <status xil_pn:value="ReadyToRun"/>
+      <outfile xil_pn:name="Logic_Sniffer.twr"/>
+      <outfile xil_pn:name="Logic_Sniffer.twx"/>
+      <outfile xil_pn:name="_xmsgs/trce.xmsgs"/>
+    </transform>
+    <transform xil_pn:end_ts="1296282914" xil_pn:in_ck="2079953557588276391" xil_pn:name="TRAN_createTimingConstraints" xil_pn:start_ts="1296282914">
+      <status xil_pn:value="SuccessfullyRun"/>
+      <status xil_pn:value="ReadyToRun"/>
+      <status xil_pn:value="OutOfDateForInputs"/>
+      <status xil_pn:value="InputChanged"/>
+    </transform>
+  </transforms>
+
+</generated_project>
