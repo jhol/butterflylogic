@@ -39,8 +39,7 @@
 module controller(
   clock, reset, run,
   wrSize, config_data,
-  inputReady, indata, busy,
-  arm_basic, capture,
+  validIn, dataIn, busy, arm, 
   // outputs...
   send, memoryWrData, memoryRead, 
   memoryWrite, memoryLastWrite);
@@ -50,11 +49,10 @@ input reset;
 input run;
 input wrSize;
 input [31:0] config_data;
-input inputReady;
-input [31:0] indata;
+input validIn;
+input [31:0] dataIn;
 input busy;
-input arm_basic;
-input capture;
+input arm;
 
 output send;
 output [31:0] memoryWrData;
@@ -81,7 +79,7 @@ begin
 end
 always @*
 begin
-  #1; next_memoryWrData = indata;
+  #1; next_memoryWrData = dataIn;
 end
 
 
@@ -138,27 +136,27 @@ begin
     IDLE :
       begin
         next_counter = 0;
-        next_memoryWrite = capture;
+        next_memoryWrite = 1;
 	if (run) next_state = DELAY;
-	else if (arm_basic) next_state = SAMPLE;
+	else if (arm) next_state = SAMPLE;
       end
 
-    // default mode: sample data from indata to memory
+    // default mode: write data samples to memory
     SAMPLE : 
       begin
         next_counter = 0;
-        next_memoryWrite = inputReady;
+        next_memoryWrite = validIn;
         if (run) next_state = DELAY;
       end
 
     // keep sampling for 4 * fwd + 4 samples after run condition
     DELAY : 
       begin
-	if (inputReady)
+	if (validIn)
 	  begin
 	    next_memoryWrite = 1'b1;
             next_counter = counter_inc;
-            if (counter == {fwd,2'b11}) 	// IED - Evaluate only on inputReady to make behavior
+            if (counter == {fwd,2'b11}) 	// IED - Evaluate only on validIn to make behavior
 	      begin				// match between sampling on all-clocks verses occasionally.
 		next_memoryLastWrite = 1'b1;	// Added LastWrite flag to simplify write->read memory handling.
 		next_counter = 0;

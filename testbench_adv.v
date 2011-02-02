@@ -249,7 +249,7 @@ endtask
 // ie: range check on indata bits 0, 7, 9, 11, 15 & no others.
 //
 // To do this, the disused range bit CLB's must be configured to NOP
-// and not disturbe the fast-carry-chain connecting them.
+// and not disturb the fast-carry-chain connecting them.
 //
 // LUT RAM's of disused CLB should be set to zero.
 //

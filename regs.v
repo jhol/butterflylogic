@@ -39,7 +39,7 @@ end
 always @*
 begin
   #1;
-  next_dly_datain = {dly_datain[(WIDTH*(DELAY-1)-1):0], datain};
+  next_dly_datain = {dly_datain, datain};
 end
 endmodule
 

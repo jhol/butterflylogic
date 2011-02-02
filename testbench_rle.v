@@ -15,13 +15,13 @@ end
 //
 // Instantaite RLE...
 //
-reg enable;
+reg enable, arm;
 reg [1:0] rle_mode;
 reg [3:0] disabledGroups;
 reg [31:0] dataIn;
 reg validIn;
 wire [31:0] dataOut;
-rle_enc rle (clock, reset, enable, rle_mode, disabledGroups, dataIn, validIn, dataOut, validOut);
+rle_enc rle (clock, reset, enable, arm, rle_mode, disabledGroups, dataIn, validIn, dataOut, validOut);
 
 
 reg [31:0] last_dataOut;
@@ -115,6 +115,7 @@ endtask
 initial
 begin
   enable = 0;
+  arm = 1;
   repeat (10) @(posedge clock);
   reset = 0;
   rle_mode = 0;

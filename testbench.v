@@ -135,6 +135,51 @@ end
 endtask
 
 
+// Test to ensure first sample, when RLE enabled, is always a <value> & not <rle-count>...
+task setup_rle_test;
+begin
+  $display ("%t: Reset...", $realtime);
+  write_cmd (8'h00); 
+
+  $display ("%t: Default Setup Trigger 0...", $realtime);
+  write_cmd (8'hC0); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); // mask
+  write_cmd (8'hC1); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); // value
+  write_cmd (8'hC2); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h08); // config
+
+  $display ("%t: Flags...  8-bit & rle", $realtime);
+  write_cmd (8'h82); write_cmd ({4'hE,2'b00}); write_cmd (8'h01); write_cmd (8'h00); write_cmd (8'h00);
+
+  $display ("%t: Divider... (100Mhz sampling)", $realtime);
+  write_cmd (8'h80); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00);
+  //write_cmd (8'h80); write_cmd (8'h10); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00);
+
+  $display ("%t: Read & Delay Count...", $realtime);
+  write_cmd (8'h81); write_cmd (8'h0f); write_cmd (8'h00); write_cmd (8'h0f); write_cmd (8'h00);
+
+  fork
+    begin
+      $display ("%t: Starting 5%% buffer prefetch test...", $realtime);
+      $display ("%t: RUN...", $realtime);
+      write_cmd (8'h01); 
+
+      wait4fpga();
+      repeat (5) @(posedge bf_clock); 
+      $finish;
+    end
+    begin
+      repeat (1) @(posedge bf_clock); 
+      repeat (1000)
+        begin
+          repeat (5) @(posedge bf_clock); 
+          indata_reg = 4;
+          repeat (5) @(posedge bf_clock); 
+          indata_reg = 0;
+        end
+    end
+  join
+end
+endtask
+
 
 //
 // Generate test sequence...
@@ -155,12 +200,12 @@ begin
   write_cmd (8'h04); wait4fpga();
 */
 
-/*
   $display ("%t: Default Setup Trigger 0...", $realtime);
   write_cmd (8'hC0); write_cmd (8'hFF); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); // mask
   write_cmd (8'hC1); write_cmd (8'h40); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); // value
   write_cmd (8'hC2); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h08); // config
 
+  //setup_rle_test;
   //setup_test1;
 
   // 8 bit tests...
@@ -182,44 +227,6 @@ begin
   setup_test2(4'h4); // channels 0,1,3
   setup_test2(4'h2); // channels 0,2,3
   setup_test2(4'h1); // channels 1,2,3
-*/
-
-
-  $display ("%t: Reset...", $realtime);
-  write_cmd (8'h00); 
-
-  $display ("%t: Default Setup Trigger 0...", $realtime);
-  write_cmd (8'hC0); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); // mask
-  write_cmd (8'hC1); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); // value
-  write_cmd (8'hC2); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h08); // config
-
-  $display ("%t: Flags...  8-bit & rle", $realtime);
-  write_cmd (8'h82); write_cmd ({4'hE,2'b00}); write_cmd (8'h01); write_cmd (8'h00); write_cmd (8'h00);
-
-  $display ("%t: Divider... (100Mhz sampling)", $realtime);
-  write_cmd (8'h80); write_cmd (8'h10); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00);
-
-  $display ("%t: Read & Delay Count...", $realtime);
-  write_cmd (8'h81); write_cmd (8'h0f); write_cmd (8'h00); write_cmd (8'h0f); write_cmd (8'h00);
-
-  $display ("%t: Starting 5%% buffer prefetch test...", $realtime);
-  $display ("%t: RUN...", $realtime);
-  write_cmd (8'h01); 
-
-  fork
-    repeat (1000)
-      begin
-        repeat (5) @(posedge bf_clock); 
-        indata_reg = 0;
-        repeat (5) @(posedge bf_clock); 
-        indata_reg = 4;
-      end
-    begin
-      wait4fpga();
-      repeat (5) @(posedge bf_clock); 
-      $finish;
-    end
-  join
 
   $finish;
 end

@@ -41,7 +41,7 @@ module trigger(
   wrMask, wrValue, wrConfig, config_data,
   arm, demux_mode, 
   // outputs...
-  run);
+  capture, run);
 
 input clock, reset;
 input validIn;
@@ -52,8 +52,10 @@ input [3:0] wrConfig;		// Write trigger config register
 input [31:0] config_data;	// Data to write into trigger config regs
 input arm;
 input demux_mode;
-output run;
+output capture;			// Store captured data in fifo.
+output run;			// Tell controller when trigger hit.
 
+reg capture, next_capture;
 reg [1:0] levelReg, next_levelReg;
 
 // if any of the stages set run, then capturing starts...
@@ -221,18 +223,28 @@ stage stage3 (
 //
 // Increase level on match (on any level?!)...
 //
-always @(posedge clock or posedge arm) 
+initial levelReg = 2'b00;
+always @(posedge clock or posedge reset) 
 begin : P2
-  if (arm) 
-    levelReg = 2'b00;
-  else levelReg = next_levelReg;
+  if (reset) 
+    begin
+      capture = 1'b0;
+      levelReg = 2'b00;
+    end
+  else 
+    begin
+      capture = next_capture;
+      levelReg = next_levelReg;
+    end
 end
 
 always @*
 begin
   #1;
+  next_capture = arm | capture;
   next_levelReg = levelReg;
   if (|stageMatch) next_levelReg = levelReg + 1;
 end
-
 endmodule
+
+

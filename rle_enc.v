@@ -127,9 +127,15 @@ end
 // Control Logic...
 //
 initial begin active=0; count=0; fieldcount=0; track=0; validOut=0; last_valid=0; end
+always @ (posedge clock or posedge reset)
+begin
+  if (reset)
+    active = 0;
+  else active = next_active;
+end
+
 always @ (posedge clock)
 begin
-  active = next_active;
   count = next_count;
   fieldcount = next_fieldcount;
   track = next_track;

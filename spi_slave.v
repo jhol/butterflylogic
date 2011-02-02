@@ -127,7 +127,7 @@ begin
   if (!dly_execute && execute)
     case (opcode)
       8'h02 : next_query_id = 1'b1;
-      8'h04 : next_query_metadata = 1'b1;  // JAWI's OLS doesn't like meta?  :-(
+      8'h04 : next_query_metadata = 1'b1; 
       8'h06 : next_query_dataIn = 1'b1;
     endcase
 end

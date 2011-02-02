@@ -135,19 +135,6 @@ begin
     end
 
   //
-  // Reset clock enables & ram address...
-  //
-  if (init) 
-    begin
-      next_clkenb = 4'b1111; 
-      casex (mode[1:0])
-        2'bx1 : next_clkenb = 4'b0001; // 1 byte writes
-        2'b1x : next_clkenb = 4'b0011; // 2 byte writes
-      endcase
-      next_address = 0;
-    end
-
-  //
   // Handle writes & reads.  Fill a given line of RAM completely before
   // moving onward.   
   //
@@ -176,6 +163,19 @@ begin
         if (clkenb[0]) next_address = (addrzero) ? `BRAM_MAX_ADDRESS : address-1'b1;
       end
   endcase
+
+  //
+  // Reset clock enables & ram address...
+  //
+  if (init) 
+    begin
+      next_clkenb = 4'b1111; 
+      casex (mode[1:0])
+        2'bx1 : next_clkenb = 4'b0001; // 1 byte writes
+        2'b1x : next_clkenb = 4'b0011; // 2 byte writes
+      endcase
+      next_address = 0;
+    end
 end
 
 

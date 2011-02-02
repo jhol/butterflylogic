@@ -87,11 +87,14 @@ wire wrsize;
 wire sample_valid;
 wire [31:0] sample_data; 
 
-wire [31:0] aligned_data;
-wire aligned_data_valid;
+wire dly_sample_valid;
+wire [31:0] dly_sample_data;
 
-wire [31:0] rle_data;
+wire aligned_data_valid;
+wire [31:0] aligned_data;
+
 wire rle_data_valid; 
+wire [31:0] rle_data;
 
 wire arm_basic, arm_adv;
 wire arm = arm_basic | arm_adv;
@@ -134,6 +137,7 @@ dly_signal extTriggerIn_reg (clock, extTriggerIn, sampled_extTriggerIn);
 dly_signal extTriggerOut_reg (clock, run, extTriggerOut);
 
 assign run = run_basic | run_adv | sampled_extTriggerIn;
+
 
 
 //
@@ -180,6 +184,7 @@ begin
 `endif
 end
 
+
 //
 // Select between internal and external sampling clock...
 //
@@ -189,6 +194,10 @@ BUFGMUX BUFGMUX_intex(
   .I1(extClock),   // Clock1 input
   .S(extClock_mode));
 
+
+//
+// Decode commands & config registers...
+//
 decoder decoder(
   .clock(clock),
   .execute(execute),
@@ -207,6 +216,10 @@ decoder decoder(
   .arm_adv(arm_adv),
   .resetCmd(resetCmd));
 
+
+//
+// Configuration flags register...
+//
 flags flags(
   .clock(clock),
   .wrFlags(wrFlags),
@@ -215,7 +228,10 @@ flags flags(
   // outputs...
   .flags_reg(flags_reg));
 
+
+//
 // Capture input relative to sampleClock...
+//
 sync sync(
   .clock(sampleClock),
   .indata(indata),
@@ -227,8 +243,11 @@ sync sync(
   // outputs...
   .outdata(syncedInput));
 
+
+//
 // Transfer from input clock (whatever it may be) to the core clock 
 // (used for everything else, including RLE counts)...
+//
 async_fifo async_fifo(
   .wrclk(sampleClock), .wrreset(reset_sample),
   .rdclk(clock), .rdreset(reset_core),
@@ -236,7 +255,10 @@ async_fifo async_fifo(
   .read_req(1'b1), .data_avail(), 
   .data_valid(stableValid), .data_out(stableInput));
 
+
+//
 // Capture data at programmed intervals...
+//
 sampler sampler(
   .clock(clock),
   .extClock_mode(extClock_mode),
@@ -249,7 +271,10 @@ sampler sampler(
   .dataOut(sample_data),
   .ready50(sampleReady50));
 
+
+//
 // Evaluate standard triggers...
+//
 trigger trigger(
   .clock(clock),
   .reset(reset_core),
@@ -262,11 +287,15 @@ trigger trigger(
   .arm(arm_basic),
   .demux_mode(demux_mode),
   // outputs...
-  .run(run_basic));
+  .run(run_basic),
+  .capture(capture_basic));
 
+
+//
 // Evaluate advanced triggers...
+//
 trigger_adv trigger_adv(
-  .clk(clock),
+  .clock(clock),
   .reset(reset_core),
   .validIn(sample_valid),
   .dataIn(sample_data),
@@ -276,20 +305,41 @@ trigger_adv trigger_adv(
   .arm(arm_adv),
   // outputs...
   .run(run_adv),
-  .capture(capture));
+  .capture(capture_adv));
 
+wire capture = capture_basic || capture_adv;
+
+
+//
+// Delay samples so they're in phase with trigger "capture" outputs.
+//
+delay_fifo delay_fifo (
+  .clock(clock),
+  .validIn(sample_valid),
+  .dataIn(sample_data),
+  // outputs
+  .validOut(dly_sample_valid),
+  .dataOut(dly_sample_data));
+defparam delay_fifo.DELAY = 3; // 3 clks to match advanced trigger
+
+
+//
 // Align data so gaps from disabled groups removed...
+//
 data_align data_align (
   .clock(clock),
   .disabledGroups(disabledGroups),
-  .validIn(sample_valid),
-  .dataIn(sample_data),
+  .validIn(dly_sample_valid && capture),
+  .dataIn(dly_sample_data),
   // outputs...
   .validOut(aligned_data_valid),
   .dataOut(aligned_data));
 
+
+//
 // Detect duplicate data & insert RLE counts (if enabled)... 
 // Requires client software support to decode.
+//
 rle_enc rle_enc (
   .clock(clock),
   .reset(reset_core),
@@ -303,17 +353,31 @@ rle_enc rle_enc (
   .validOut(rle_data_valid),
   .dataOut(rle_data));
 
+
+//
+// Delay run (trigger) pulse to complensate for 
+// data_align & rle_enc delay...
+//
+pipeline_stall dly_run_reg (
+  .clk(clock), 
+  .reset(reset_core), 
+  .datain(run), 
+  .dataout(dly_run));
+defparam dly_run_reg.DELAY = 1;
+
+
+//
 // The brain's...  mmm... brains...
+//
 controller controller(
   .clock(clock),
   .reset(reset_core),
-  .run(run),
+  .run(dly_run),
   .wrSize(wrsize),
   .config_data(config_data),
-  .inputReady(rle_data_valid),
-  .indata(rle_data),
-  .arm_basic(arm_basic),
-  .capture(capture),
+  .validIn(rle_data_valid),
+  .dataIn(rle_data),
+  .arm(arm),
   .busy(outputBusy),
   // outputs...
   .send(outputSend),
