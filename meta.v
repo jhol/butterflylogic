@@ -66,7 +66,7 @@ begin : meta
   `ADDLONG("v", "1", ".", "0", "1");
   `ADDBYTE(0);
 
-  `ADDLONG(8'h02, "3", ".", "0", "0"); // FPGA firmware version string
+  `ADDLONG(8'h02, "3", ".", "0", "1"); // FPGA firmware version string
   `ADDBYTE(0);
 
   //`ADDLONG(8'h21,8'h00,8'h60,8'h00,8'h00); // Amount of sample memory (24K)

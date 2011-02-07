@@ -92,7 +92,7 @@ wire [30:0] masked_dataIn = dataIn & data_mask;
 // Repeat mode: In <value><rle-count> pairs, a count of 4 means 4 samples.
 //   In other words, in repeat mode the count is inclusive of the value.
 //   When disabled (repitition mode), the count is exclusive.
-wire rle_repeat_mode = (rle_mode==0);
+wire rle_repeat_mode = 0; // (rle_mode==0);  // Disabled - modes 0 & 1 now identical
 
 
 //
