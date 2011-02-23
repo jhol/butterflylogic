@@ -1,68 +1,143 @@
 `timescale 1ns/100ps
 
+
+//
+// Full Logic Sniffer version of advanced trigger testbench... much slower...
+//
 module testbench();
 
-reg clock, reset;
-initial begin clock=0; reset=1; end
+reg bf_clock;
+initial bf_clock=0;
 always
 begin
   #10;
-  clock = !clock;
+  bf_clock = !bf_clock;
 end
 
+reg sclk, mosi, cs;
+initial begin sclk=0; mosi=1'b0; cs=1'b1; end
+
+wire [31:0] indata; // Since indata can drive data, must create a "bus" assignment.
+reg [31:0] indata_reg;
+reg indata_oe;
+initial
+begin 
+  indata_reg = 32'h0;
+  indata_oe = 1'b0; 
+  #10;
+  indata_oe = 1'b1; // turn on output enable
+end
+assign indata = (indata_oe) ? indata_reg : 32'hzzzzzzzz;
 
 
 //
-// Instantiate advanced trigger...
+// Instantiate the Logic Sniffer...
 //
-reg validIn;
-reg [31:0] dataIn;
-reg arm;
-reg wrSelect, wrChain;
-reg [31:0] config_data;
+wire extClockIn = 1'b0;
+wire extTriggerIn = 1'b0;
 
-trigger_adv adv (
-  clock, reset, 
-  dataIn, validIn, arm,
-  wrSelect, wrChain, config_data,
-  // outputs...
-  run, capture);
+Logic_Sniffer sniffer (
+  .bf_clock(bf_clock),
+  .extClockIn(extClockIn),
+  .extClockOut(extClockOut),
+  .extTriggerIn(extTriggerIn),
+  .extTriggerOut(extTriggerOut),
+  .indata(indata),
+  .miso(miso), 
+  .mosi(mosi), 
+  .sclk(sclk), 
+  .cs(cs),
+  .dataReady(dataReady),
+  .armLEDnn(armLEDnn),
+  .triggerLEDnn(triggerLEDnn));
 
 
-always @ (posedge clock)
-begin
-  #1;
-  if (capture) $display ("%t: Capture", $realtime);
-  if (run) $display ("%t: Run (triggered)", $realtime);
+//
+// PIC emulator...
+//
+reg wrbyte_req;
+reg [7:0] wrbyte_data;
+initial begin wrbyte_req=0; wrbyte_data=0; end
+always @(posedge wrbyte_req)
+begin : temp
+  integer i;
+  i = 7;
+  cs = 0;
+  #100;
+  repeat (8) 
+    begin 
+      sclk = 0; mosi = wrbyte_data[i]; i=i-1; #50;
+      sclk = 1; #50;
+    end
+  sclk = 0;
+  mosi = 0;
+  #100;
+  cs = 1;
+  #100;
+  wrbyte_req = 0;
 end
 
 
-task issue_idle;
-begin
-  #1; dataIn = 0; validIn=1'b1;
-  @(posedge clock);
-  #0.1; validIn=1'b0;
+//
+// Generate SPI test commands...
+//
+task write_cmd;
+input [7:0] value;
+integer i;
+begin 
+  wrbyte_req = 1;
+  wrbyte_data = value;
+  @(negedge wrbyte_req);
 end
 endtask
 
-
-task issue_data;
+task write_longcmd;
+input [7:0] opcode;
 input [31:0] value;
 begin
-  $display ("%t: Issue Data: %08x", $realtime, value);
-  #1; dataIn = value; validIn=1'b1;
-  @(posedge clock);
-  #0.1; validIn=1'b0;
+  write_cmd (opcode);
+  write_cmd (value[7:0]);
+  write_cmd (value[15:8]);
+  write_cmd (value[23:16]);
+  write_cmd (value[31:24]);
 end
 endtask
 
 
+// Simulate behavior of PIC responding the dataReady asserting...
+task wait4fpga;
+begin
+  while (!dataReady) @(posedge dataReady);
+  while (dataReady) write_cmd(8'h7F);
+end
+endtask
+
+
+
+//
+// Monitor trigger...
+//
+initial
+begin
+  #100;
+  @(posedge sniffer.core.capture);
+  $display ("%t: Capture", $realtime);
+end
+
+initial
+begin
+  #100;
+  @(posedge sniffer.core.run);
+  $display ("%t: Run (triggered)", $realtime);
+end
+
+
+
+// Configure commands for trigger...
 task write_select;
 input [31:0] value;
 begin
-  #1; config_data = value; wrSelect = 1'b1; 
-  @(posedge clock);
-  #0.1; wrSelect = 1'b0;
+  write_longcmd (8'h9E, value);
 end
 endtask
 
@@ -70,10 +145,7 @@ endtask
 task write_chain;
 input [31:0] value;
 begin
-  #1; config_data = value; wrChain = 1'b1; 
-  @(posedge clock);
-  #1; wrChain = 1'b0;
-  repeat (32) @(posedge clock);
+  write_longcmd (8'h9F, value);
 end
 endtask
 
@@ -81,6 +153,7 @@ endtask
 // Write trigger state...
 task write_trigstate;
 input [3:0] state;
+input laststate;
 input trigger;
 input [1:0] start_timer;
 input [1:0] clear_timer;
@@ -89,7 +162,7 @@ input [3:0] else_state;
 input [19:0] obtain_count;
 begin
   write_select(state);
-  write_chain({trigger,start_timer,clear_timer,stop_timer,else_state,obtain_count});
+  write_chain({laststate,trigger,start_timer,clear_timer,stop_timer,else_state,obtain_count});
 end
 endtask
 
@@ -166,22 +239,23 @@ endtask
 // The final op combines the mid ops.
 //
 parameter [3:0] 
-  OP_NOP=0, OP_AND=1, OP_NAND=2, OP_OR=3, OP_NOR=4, OP_XOR=5, OP_NXOR=6, OP_A=7, OP_B=8;
+  OP_NOP=0, OP_ANY=1, OP_AND=2, OP_NAND=3, OP_OR=4, OP_NOR=5, OP_XOR=6, OP_NXOR=7, OP_A=8, OP_B=9;
 
-reg [15:0] pairvalue[0:8];
-reg [15:0] midvalue[0:8];
-reg [15:0] finalvalue[0:8];
+reg [15:0] pairvalue[0:9];
+reg [15:0] midvalue[0:9];
+reg [15:0] finalvalue[0:9];
 initial
 begin
   pairvalue[0]=16'h0000; midvalue[0]=16'h0000; finalvalue[0]=16'h0000; // NOP
-  pairvalue[1]=16'h8000; midvalue[1]=16'h8000; finalvalue[1]=16'h0008; // AND
-  pairvalue[2]=16'h7FFF; midvalue[2]=16'h7FFF; finalvalue[2]=16'h0007; // NAND
-  pairvalue[3]=16'hF888; midvalue[3]=16'hFFFE; finalvalue[3]=16'h000E; // OR
-  pairvalue[4]=16'h0777; midvalue[4]=16'h0001; finalvalue[4]=16'h0001; // NOR
-  pairvalue[5]=16'h7888; midvalue[5]=16'h0116; finalvalue[5]=16'h0006; // XOR
-  pairvalue[6]=16'h8777; midvalue[6]=16'hFEE9; finalvalue[6]=16'h0009; // NXOR
-  pairvalue[7]=16'h8888; // A-only
-  pairvalue[8]=16'hF000; // B-only
+  pairvalue[1]=16'hFFFF; midvalue[1]=16'hFFFF; finalvalue[1]=16'hFFFF; // ANY
+  pairvalue[2]=16'h8000; midvalue[2]=16'h8000; finalvalue[2]=16'h0008; // AND
+  pairvalue[3]=16'h7FFF; midvalue[3]=16'h7FFF; finalvalue[3]=16'h0007; // NAND
+  pairvalue[4]=16'hF888; midvalue[4]=16'hFFFE; finalvalue[4]=16'h000E; // OR
+  pairvalue[5]=16'h0777; midvalue[5]=16'h0001; finalvalue[5]=16'h0001; // NOR
+  pairvalue[6]=16'h7888; midvalue[6]=16'h0116; finalvalue[6]=16'h0006; // XOR
+  pairvalue[7]=16'h8777; midvalue[7]=16'hFEE9; finalvalue[7]=16'h0009; // NXOR
+  pairvalue[8]=16'h8888; midvalue[8]=16'hEEEE; finalvalue[8]=16'h0002; // A-only
+  pairvalue[9]=16'hF000; midvalue[9]=16'hFFF0; finalvalue[9]=16'h0004; // B-only
 end
 
 task write_trigsum;
@@ -382,30 +456,35 @@ endtask
 // Generate test sequence...
 //
 initial
-begin : test
-  integer i;
+begin
+  indata_reg = 0;
+  #100;
 
-  validIn=0;
-  dataIn=0;
-  arm=0;
-  wrSelect=0;
-  wrChain=0;
-  config_data=0;
+  $display ("%t: Reset...", $realtime);
+  write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00);
 
-  repeat (10) @(posedge clock);
-  reset = 0;
-  repeat (10) @(posedge clock);
+  $display ("%t: Query ID...", $realtime);
+  write_cmd (8'h02); wait4fpga();
 
-  // Configure simple two state trigger...
+  $display ("%t: Flags...  8-bit capture, internal test pattern", $realtime);
+  write_longcmd (8'h82, 32'h00000800 | {4'hE, 2'h0});
 
-  $display ("%t: Trigger Terms...", $realtime);
-  //               term,  value,         mask
-  write_trigterm  (  0,   32'h00000011,  32'h000000FF); // terma = look for 0x11 in bits[7:0]
-  write_trigterm  (  1,   32'h00000042,  32'h000000FF); // termb = look for 0x42 in bits[7:0]
-  write_trigterm  (  2,   32'h00000033,  32'h000000FF); // termc = look for 0x33 in bits[7:0]
-  for (i=3; i<10; i=i+1) write_trigterm  (i, 32'h00000000, 32'h00000000); 
+  $display ("%t: Divider... (max sample rate)", $realtime);
+  write_longcmd (8'h80, 32'h00000000);
 
+  $display ("%t: Read & Delay Count...", $realtime);
+  write_longcmd (8'h81, 32'h00040004);
 
+  //
+  // Configure very simple trigger...
+  //
+  $display ("%t: Zero all Trigger Terms...", $realtime);
+  write_trigterm  ( 15,   32'h00000000,  32'h00000000); // zero all trig terms
+
+  $display ("%t: Trigger Term 0...", $realtime);
+  write_trigterm  (  0,   32'h00000001,  32'h00000001); // terma = look for 0x01 in bits[7:0]
+
+/*
   $display ("%t: Trigger Range 1 Lower...", $realtime);
   write_range (0, 32'h00001234); 
   $display ("%t: Trigger Range 1 Upper...", $realtime);
@@ -415,23 +494,19 @@ begin : test
   $display ("%t: Trigger Range 2 Upper...", $realtime);
   write_range (3, 32'h0000DEF0);
 
-
   $display ("%t: Trigger Edges...", $realtime);
   write_edge (0, 32'h04010000, 32'h80200000, 32'h00000000); // edge1
   write_edge (1, 32'h00000000, 32'h00000000, 32'h00000000); // edge2
 
-
   $display ("%t: Trigger Timer Limits...", $realtime);
   write_timer_limit (0, 1000);   // 10000ns   (1000 clocks)
   write_timer_limit (1, 100000); // 1000000ns (100000 clocks)
-
+*/
 
   $display ("%t: Trigger State FSM...", $realtime);
-  //               state, trig, starttimer, cleartimer, stoptimer, elsestate, obtaincount
-  write_trigstate (4'h0,   1'b0,  2'b00,       2'b0,       2'b0,      4'h0,     20'h0); // on hit goto 1
-  write_trigstate (4'h1,   1'b0,  2'b01,       2'b0,       2'b0,      4'h0,     20'h0); // on hit start timer1 & goto 2, else 0
-  write_trigstate (4'h2,   1'b0,  2'b00,       2'b0,       2'b0,      4'h1,     20'h0); // on hit goto 3, else 1
-  write_trigstate (4'h3,   1'b1,  2'b00,       2'b0,       2'b0,      4'h2,     20'h0); // on hit trigger, else 2
+  //               state, last, trig, starttimer, cleartimer, stoptimer, elsestate, obtaincount
+  for (i=0; i<1; i=i+1)
+    write_trigstate (i,   1'b1, 1'b1,  2'b00,       2'b0,       2'b0,      4'h0,     20'h0); // on hit trigger
 
 
   // Trigsum fields:
@@ -444,6 +519,7 @@ begin : test
   write_trigsum ( 0,    1,   OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_OR, OP_OR, OP_OR); // nop
   write_trigsum ( 0,    2,   OP_A,   OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_OR, OP_OR, OP_OR); // capture=terma
 
+/*
   write_trigsum ( 1,    0,   OP_B,   OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_OR, OP_OR, OP_OR); // hit=termb (0x42)
   write_trigsum ( 1,    1,   OP_A,   OP_A,   OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_OR, OP_OR, OP_OR); // else=terma | termc (0x11 or 0x33)
   write_trigsum ( 1,    2,   OP_B,   OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_OR, OP_OR, OP_OR); // capture=termb 
@@ -455,57 +531,17 @@ begin : test
   write_trigsum ( 3,    0,   OP_NOP, OP_B,   OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_OR, OP_OR, OP_OR); // hit=range1
   write_trigsum ( 3,    1,   OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_OR, OP_OR, OP_OR);
   write_trigsum ( 3,    2,   OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_OR, OP_OR, OP_OR);
+*/
 
-  repeat (10) @(posedge clock);
-  #1; arm=1;
-  repeat (10) @(posedge clock);
+  $display ("%t: Arm Advanced Trigger...", $realtime);
+  write_cmd (8'h0F);
+  wait4fpga();
 
-  issue_data (32'h0); // start in state 0
-  issue_data (32'h0); // nop
+  repeat (5) @(posedge bf_clock);
 
-  issue_data (32'h0); // nop
-  issue_data (32'h0); // nop
+  write_cmd (8'h00); // verify finished flag gets cleared
+  repeat (20) @(posedge bf_clock);
 
-  issue_data (32'h00000001); // nop
-  issue_data (32'h00000011); // goes to state 1
-
-  issue_data (32'h0); // nop
-  issue_data (32'h0); // nop
-  issue_data (32'h0); // nop
-  issue_data (32'h0); // nop
-  issue_data (32'h0); // nop
-  issue_data (32'h0); // nop
-  issue_data (32'h0); // nop
-  issue_data (32'h0); // nop
-
-  issue_data (32'h00000011); // go back to state 0
-  issue_data (32'h00000001); // nop
-
-  issue_data (32'h00000011); // go back to state 1
-  issue_data (32'h00000001); // nop
-
-  issue_data (32'h00000033); // go back to state 0
-  issue_data (32'h00000003); // nop
-
-  issue_data (32'h00000011); // go back to state 1
-  issue_data (32'h00000001); // nop
-
-  issue_data (32'h00000002); // nop
-  issue_data (32'h00000042); // goto state 2
-
-  // waiting for state 3...
-  repeat (500) issue_idle; // wait for state 3
-  issue_data (32'h80002345); // hits range, but nop because still in state 2
-  issue_data (32'h80000000); // 
-  issue_data (32'h00000000); // falling edge - back to state 1
-  issue_data (32'h00000042); // back to state 2
-  issue_data (32'h00010000); // rising edge - back to state 1
-  issue_data (32'h00000042); // back to state 2
-
-  repeat (1000) issue_idle; // wait for state 3
-  issue_data (32'h00002345); // trigger!
-
-  repeat (100) issue_idle;
   $finish;
 end
 
@@ -524,6 +560,42 @@ begin
   $display ("%t: Starting wave dump...",$realtime);
   $dumpfile ("waves.dump");
   $dumpvars(0);
+end
+
+
+reg [7:0] miso_byte = 0;
+integer miso_count = 0;
+always @(posedge sclk)
+begin
+  #50;
+  if (cs) 
+    begin
+      miso_byte=8'hzz; 
+      miso_count=0;
+    end
+  else 
+    begin
+      miso_byte = {miso_byte[6:0],miso};
+      miso_count=miso_count+1;
+    end
+
+  if (miso_count<8)
+    $display ("%t: wr=%d   rd=%d",$realtime, mosi, miso);
+  else if ((miso_byte>=32) && (miso_byte<128))
+    begin
+      $display ("%t: wr=%d   rd=%d (0x%02x) '%c'",$realtime, mosi, miso, miso_byte, miso_byte);
+      miso_count=0;
+    end
+  else
+    begin
+      $display ("%t: wr=%d   rd=%d (0x%02x)",$realtime, mosi, miso, miso_byte);
+      miso_count=0;
+    end
+end
+
+always #10000
+begin
+  $display ("%t",$realtime);
 end
 endmodule
 

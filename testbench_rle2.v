@@ -146,7 +146,8 @@ begin
   write_cmd (8'hC1); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); // value
   write_cmd (8'hC2); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h08); // config
 
-  setup_rle (4'b1011); // enable ch2 (corresponds to bit 0 of Logic Sniffer)
+  //setup_rle (4'b1011); // enable ch2 
+  setup_rle (4'b1000); // enable ch[2:0] 
 
   fork
     begin

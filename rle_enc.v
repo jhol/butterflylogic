@@ -68,6 +68,7 @@ localparam RLE_COUNT = 1'b1;
 // Registers...
 //
 reg active, next_active;
+reg mask_flag, next_mask_flag;
 reg [1:0] mode, next_mode;
 reg [30:0] data_mask, next_data_mask;
 reg [30:0] last_data, next_last_data;
@@ -126,12 +127,19 @@ end
 //
 // Control Logic...
 //
-initial begin active=0; count=0; fieldcount=0; track=0; validOut=0; last_valid=0; end
+initial begin active=0; mask_flag=0; count=0; fieldcount=0; track=0; validOut=0; last_valid=0; end
 always @ (posedge clock or posedge reset)
 begin
   if (reset)
-    active = 0;
-  else active = next_active;
+    begin
+      active = 0;
+      mask_flag = 0;
+    end
+  else 
+    begin
+      active = next_active;
+      mask_flag = next_mask_flag;
+    end
 end
 
 always @ (posedge clock)
@@ -148,7 +156,9 @@ end
 always @*
 begin
   next_active = active | (enable && arm);
-  next_dataOut = dataIn;
+  next_mask_flag = mask_flag | (enable && arm); // remains asserted even if rle_enable turned off
+
+  next_dataOut = (mask_flag) ? masked_dataIn : dataIn;
   next_validOut = validIn;
   next_last_data = (validIn) ? masked_dataIn : last_data; 
   next_last_valid = FALSE;
@@ -161,7 +171,6 @@ begin
   if (active)
     begin
       next_validOut = FALSE;
-      next_dataOut = dataOut;
       next_last_valid = last_valid | validIn;
 
       if (validIn && last_valid)
@@ -173,6 +182,7 @@ begin
             case (mode)
               2'h0 : next_dataOut = {RLE_COUNT,count[6:0]};
               2'h1 : next_dataOut = {RLE_COUNT,count[14:0]};
+              2'h2 : next_dataOut = {RLE_COUNT,count[22:0]};
             endcase
             if (!count_gt_one) next_dataOut = last_data;
 
@@ -185,7 +195,6 @@ begin
           end
         else // match && !count_full
 	  begin
-            next_dataOut = masked_dataIn;
             next_count = inc_count;
 	    if (count_zero) // write initial data if count zero
 	      begin

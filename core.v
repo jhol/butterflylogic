@@ -35,6 +35,7 @@
 
 `timescale 1ns/100ps
 //`define HEARTBEAT
+//`define SLOW_EXTCLK
 
 module core(
   clock, extReset, 
@@ -100,7 +101,30 @@ wire arm_basic, arm_adv;
 wire arm = arm_basic | arm_adv;
 
 wire sampleClock; 
+
+
+//
+// Generate external clock reference...
+//
+`ifdef SLOW_EXTCLK
+
+reg [1:0] scount, next_scount;
+assign extClockOut = scount[1];
+initial scount=0;
+always @ (posedge sampleClock)
+begin
+  scount = next_scount;
+end
+always @*
+begin
+  next_scount = scount+1'b1;
+end
+
+`else
+
 wire extClockOut = sampleClock;
+
+`endif
 
 
 //
@@ -211,7 +235,7 @@ decoder decoder(
   .wrFlags(wrFlags),
   .wrTrigSelect(wrTrigSelect),
   .wrTrigChain(wrTrigChain),
-  .disable_rle(disable_rle),
+  .finish_now(finish_now),
   .arm_basic(arm_basic),
   .arm_adv(arm_adv),
   .resetCmd(resetCmd));
@@ -224,7 +248,7 @@ flags flags(
   .clock(clock),
   .wrFlags(wrFlags),
   .config_data(config_data),
-  .disable_rle(disable_rle),
+  .finish_now(finish_now),
   // outputs...
   .flags_reg(flags_reg));
 
@@ -303,6 +327,7 @@ trigger_adv trigger_adv(
   .wrChain(wrTrigChain),
   .config_data(config_data),
   .arm(arm_adv),
+  .finish_now(finish_now),
   // outputs...
   .run(run_adv),
   .capture(capture_adv));
@@ -358,6 +383,13 @@ rle_enc rle_enc (
 // Delay run (trigger) pulse to complensate for 
 // data_align & rle_enc delay...
 //
+pipeline_stall dly_arm_reg (
+  .clk(clock), 
+  .reset(reset_core), 
+  .datain(arm), 
+  .dataout(dly_arm));
+defparam dly_arm_reg.DELAY = 2;
+
 pipeline_stall dly_run_reg (
   .clk(clock), 
   .reset(reset_core), 
@@ -377,7 +409,7 @@ controller controller(
   .config_data(config_data),
   .validIn(rle_data_valid),
   .dataIn(rle_data),
-  .arm(arm),
+  .arm(dly_arm),
   .busy(outputBusy),
   // outputs...
   .send(outputSend),

@@ -42,7 +42,7 @@ input [15:0] indata180;
 output [31:0] outdata;
 
 reg [15:0] dly_indata180, next_dly_indata180;
-assign outdata = {indata,dly_indata180};
+assign outdata = {dly_indata180,indata};
 
 always @(posedge clock) 
 begin

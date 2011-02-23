@@ -135,7 +135,7 @@
 
 module trigger_adv (
   clock, reset, 
-  dataIn, validIn, arm,
+  dataIn, validIn, arm, finish_now,
   wrSelect, wrChain, config_data,
   // outputs...
   run, capture);
@@ -143,7 +143,7 @@ module trigger_adv (
 input clock, reset;
 input validIn;
 input [31:0] dataIn;		// Channel data...
-input arm;
+input arm, finish_now;
 input wrSelect,wrChain;
 input [31:0] config_data;
 output run;			// Full capture
@@ -159,6 +159,8 @@ reg [31:0] wrdata, next_wrdata;
 reg wrenb, next_wrenb;
 
 reg active, next_active;
+reg finished, next_finished;
+reg force_capture, next_force_capture;
 reg [3:0] state, next_state;
 reg [19:0] hit_count, next_hit_count;
 reg run, next_run;
@@ -234,6 +236,7 @@ ram_dword fsm_ram (clock, fsm_ramaddr, wrenb_fsm, config_data, fsm_state);
 // Decode FSM state flags: 
 //   {Trigger, StartTimer[2:1], ClearTimer[2:1], StopTimer[2:1], ElseNextState[3:0], Count[19:0]}
 //
+wire fsm_laststate;
 wire fsm_trigger;
 wire fsm_start_timer1;
 wire fsm_clear_timer1;
@@ -244,7 +247,7 @@ wire fsm_stop_timer2;
 wire [3:0] fsm_else_state;
 wire [19:0] fsm_count;
 assign {
-  fsm_trigger, 
+  fsm_laststate, fsm_trigger, 
   fsm_start_timer2, fsm_start_timer1, 
   fsm_clear_timer2, fsm_clear_timer1, 
   fsm_stop_timer2, fsm_stop_timer1, 
@@ -293,6 +296,8 @@ trigterms trigterms (
 initial 
 begin 
   active = 1'b0;
+  finished = 1'b0;
+  force_capture = 1'b0;
   state = 4'h0;
   hit_count = 20'h0;
   run = 1'b0;
@@ -302,6 +307,8 @@ end
 always @ (posedge clock)
 begin
   active = next_active;
+  finished = next_finished;
+  force_capture = next_force_capture;
   state = next_state;
   hit_count = next_hit_count;
   run = next_run;
@@ -311,6 +318,8 @@ end
 always @*
 begin
   next_active = active | arm;
+  next_finished = finished;
+  next_force_capture = force_capture;
   next_state = state;
   next_hit_count = hit_count;
   next_run = 1'b0;
@@ -320,29 +329,41 @@ begin
   // Evaluate state...
   if (active && dly_validIn)
     begin
-      next_capture = capture_term;
-      if (hit_term)
-	begin
-	  next_hit_count = hit_count+1'b1;
-	  if (hit_count==fsm_count)
-	    begin
-	      update_timers = 1'b1;
-	      next_hit_count = 0;
-	      next_state = state + !last_state; // no wrapping around
-	      if (fsm_trigger || last_state) // trigger if requested, or fsm tries to wrap-around
-		next_run = 1'b1;
-	    end
-	end
-      else if (else_term) 
-	begin
-	  next_hit_count = 0;
-	  next_state = fsm_else_state;
-	end
+      next_capture = capture_term || force_capture;
+      if (!finished)
+        if (hit_term)
+	  begin
+	    next_hit_count = hit_count+1'b1;
+	    if (hit_count==fsm_count)
+	      begin
+	        update_timers = 1'b1;
+	        next_hit_count = 0;
+	        if (fsm_trigger || fsm_laststate || last_state) // trigger if requested, or fsm tries to wrap-around
+  		  next_run = 1'b1;
+  	        if (fsm_laststate || last_state) // no wrapping around
+		  next_finished = 1'b1;
+	        else next_state = state + 1;
+	      end
+	  end
+        else if (else_term) 
+	  begin
+	    next_hit_count = 0;
+	    next_state = fsm_else_state;
+	  end
+    end
+
+  if (active && finish_now)
+    begin
+      next_finished = 1'b1;
+      next_force_capture = 1'b1;
+      next_run = 1;
     end
 
   if (reset)
     begin
       next_active = 1'b0;
+      next_finished = 1'b0;
+      next_force_capture = 1'b0;
       next_state = 0;
       next_hit_count = 0;
       next_run = 0;
@@ -384,16 +405,16 @@ end
 wire [7:0] terma_hit, termb_hit, termc_hit, termd_hit;
 wire [7:0] terme_hit, termf_hit, termg_hit, termh_hit;
 wire [7:0] termi_hit, termj_hit;
-trigterm_32bit terma (dataIn, clock, wrenb_term[0], din, terma_dout, terma_hit);
-trigterm_32bit termb (dataIn, clock, wrenb_term[1], din, termb_dout, termb_hit);
-trigterm_32bit termc (dataIn, clock, wrenb_term[2], din, termc_dout, termc_hit);
-trigterm_32bit termd (dataIn, clock, wrenb_term[3], din, termd_dout, termd_hit);
-trigterm_32bit terme (dataIn, clock, wrenb_term[4], din, terme_dout, terme_hit);
-trigterm_32bit termf (dataIn, clock, wrenb_term[5], din, termf_dout, termf_hit);
-trigterm_32bit termg (dataIn, clock, wrenb_term[6], din, termg_dout, termg_hit);
-trigterm_32bit termh (dataIn, clock, wrenb_term[7], din, termh_dout, termh_hit);
-trigterm_32bit termi (dataIn, clock, wrenb_term[8], din, termi_dout, termi_hit);
-trigterm_32bit termj (dataIn, clock, wrenb_term[9], din, termj_dout, termj_hit);
+trigterm_32bit terma (dataIn, clock, wrenb_term[0] || wrenb_term[15], din, terma_dout, terma_hit);
+trigterm_32bit termb (dataIn, clock, wrenb_term[1] || wrenb_term[15], din, termb_dout, termb_hit);
+trigterm_32bit termc (dataIn, clock, wrenb_term[2] || wrenb_term[15], din, termc_dout, termc_hit);
+trigterm_32bit termd (dataIn, clock, wrenb_term[3] || wrenb_term[15], din, termd_dout, termd_hit);
+trigterm_32bit terme (dataIn, clock, wrenb_term[4] || wrenb_term[15], din, terme_dout, terme_hit);
+trigterm_32bit termf (dataIn, clock, wrenb_term[5] || wrenb_term[15], din, termf_dout, termf_hit);
+trigterm_32bit termg (dataIn, clock, wrenb_term[6] || wrenb_term[15], din, termg_dout, termg_hit);
+trigterm_32bit termh (dataIn, clock, wrenb_term[7] || wrenb_term[15], din, termh_dout, termh_hit);
+trigterm_32bit termi (dataIn, clock, wrenb_term[8] || wrenb_term[15], din, termi_dout, termi_hit);
+trigterm_32bit termj (dataIn, clock, wrenb_term[9] || wrenb_term[15], din, termj_dout, termj_hit);
 
 trigterm_range range1l (dataIn, clock, wrenb_range_edge[0], din, range1_lower); // lower = datain>target
 trigterm_range range1u (dataIn, clock, wrenb_range_edge[1], din, range1_upper); 

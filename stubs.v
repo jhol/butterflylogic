@@ -1,3 +1,5 @@
+`timescale 1ns / 100ps
+
 //
 // Simulation testbench stubs for Xilinx modules...
 //
@@ -121,7 +123,6 @@ RAM16X1S bit1 (A0,A1,A2,A3,WCLK,WE,D1,O1);
 RAM16X1S bit2 (A0,A1,A2,A3,WCLK,WE,D2,O2);
 RAM16X1S bit3 (A0,A1,A2,A3,WCLK,WE,D3,O3);
 endmodule
-
 
 
 module SRLC16E (A0,A1,A2,A3,CLK,CE,D,Q15,Q);

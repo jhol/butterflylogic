@@ -42,7 +42,7 @@ module decoder(
   wrtrigmask, wrtrigval, wrtrigcfg,
   wrspeed, wrsize, wrFlags,
   wrTrigSelect, wrTrigChain,
-  disable_rle,
+  finish_now,
   arm_basic, arm_adv, resetCmd);
 
 input clock;
@@ -56,7 +56,7 @@ output wrsize;
 output wrFlags;
 output wrTrigSelect;
 output wrTrigChain;
-output disable_rle;
+output finish_now;
 output arm_basic;
 output arm_adv;
 output resetCmd;
@@ -74,7 +74,7 @@ reg [3:0] wrtrigcfg, next_wrtrigcfg;
 reg wrspeed, next_wrspeed;
 reg wrsize, next_wrsize;
 reg wrFlags, next_wrFlags;
-reg disable_rle, next_disable_rle;
+reg finish_now, next_finish_now;
 reg wrTrigSelect, next_wrTrigSelect;
 reg wrTrigChain, next_wrTrigChain;
 reg dly_execute, next_dly_execute;
@@ -95,7 +95,7 @@ begin
   wrspeed = next_wrspeed;
   wrsize = next_wrsize;
   wrFlags = next_wrFlags;
-  disable_rle = next_disable_rle;
+  finish_now = next_finish_now;
   wrTrigSelect = next_wrTrigSelect;
   wrTrigChain = next_wrTrigChain;
   dly_execute = next_dly_execute;
@@ -113,7 +113,7 @@ begin
   next_wrspeed = 1'b0;
   next_wrsize = 1'b0;
   next_wrFlags = 1'b0;
-  next_disable_rle = 1'b0;
+  next_finish_now = 1'b0;
   next_wrTrigSelect = 1'b0;
   next_wrTrigChain = 1'b0;
   next_dly_execute = execute;
@@ -126,7 +126,7 @@ begin
       8'h02 :;// Query ID (decoded in spi_slave.v)
       8'h03 :;// Selftest (reserved)
       8'h04 :;// Query Meta Data (decoded in spi_slave.v)
-      8'h05 : next_disable_rle = 1'b1;
+      8'h05 : next_finish_now = 1'b1;
       8'h06 :;// Query input data (decoded in spi_slave.v)
       8'h0F : next_arm_adv = 1'b1;
       8'h11 :;// XON (reserved)

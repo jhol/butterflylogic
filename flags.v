@@ -32,14 +32,14 @@
 
 module flags(
   clock, wrFlags, config_data,
-  disable_rle,
+  finish_now,
   // outputs
   flags_reg);
 
 input clock;
 input wrFlags;
 input [31:0] config_data;
-input disable_rle;
+input finish_now;
 output [31:0] flags_reg;
 
 reg [31:0] flags_reg, next_flags_reg;
@@ -57,7 +57,7 @@ always @*
 begin
   #1;
   next_flags_reg = (wrFlags) ? config_data : flags_reg;
-  if (disable_rle) next_flags_reg[8] = 1'b0;
+  if (finish_now) next_flags_reg[8] = 1'b0;
 end
 endmodule
 
