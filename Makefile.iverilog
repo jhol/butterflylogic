@@ -1,0 +1,74 @@
+
+RTL_SPI = rtl/spi_receiver.v    \
+          rtl/spi_slave.v       \
+          rtl/spi_transmitter.v
+RTL_232 = rtl/prescaler.v       \
+          rtl/receiver.v        \
+          rtl/transmitter.v     \
+          rtl/eia232.v
+RTL     = rtl/async_fifo.v      \
+          rtl/stubs.v           \
+          rtl/BRAM6k9bit.v      \
+          rtl/clockman.v        \
+          rtl/controller.v      \
+          rtl/core.v            \
+          rtl/data_align.v      \
+          rtl/decoder.v         \
+          rtl/delay_fifo.v      \
+          rtl/demux.v           \
+          rtl/filter.v          \
+          rtl/flags.v           \
+          rtl/gray.v            \
+          rtl/iomodules.v       \
+          rtl/Logic_Sniffer.v   \
+          rtl/meta.v            \
+          rtl/regs.v            \
+          rtl/rle_enc.v         \
+          rtl/sampler.v         \
+          rtl/sram_interface.v  \
+          rtl/stage.v           \
+          rtl/sync.v            \
+          rtl/timer.v           \
+          rtl/trigger_adv.v     \
+          rtl/trigger.v         \
+          $(RTL_SPI)
+TBN     = tbn/testbench_adv2.v  \
+          tbn/testbench_adv.v   \
+          tbn/testbench_rle2.v  \
+          tbn/testbench_rle.v   \
+          tbn/testbench.v
+
+OPT = -D NOSST -D ICARUS -I rtl
+
+all: adv adv2 rle rle2 full divider
+
+adv: tbn/testbench_adv.v rtl/timer.v rtl/stubs.v rtl/regs.v
+	iverilog $(OPT) tbn/testbench_adv.v rtl/timer.v rtl/stubs.v rtl/regs.v -o adv.out
+	vvp -n -l adv.log adv.out
+
+adv2: tbn/testbench_adv2.v $(RTL)
+	iverilog $(OPT) tbn/testbench_adv2.v $(RTL) -o adv2.out
+	vvp -n -l adv2.log adv2.out
+
+rle: tbn/testbench_rle.v rtl/rle_enc.v
+	iverilog $(OPT) tbn/testbench_rle.v rtl/rle_enc.v -o rle.out
+	vvp -n -l rle.log rle.out
+
+rle2: tbn/testbench_rle2.v $(RTL)
+	iverilog $(OPT) tbn/testbench_rle2.v $(RTL) -o rle2.out
+	vvp -n -l rle2.log rle2.out
+
+full: tbn/testbench.v $(RTL)
+	iverilog $(OPT) tbn/testbench.v $(RTL) -o full.out
+	vvp -n -l full.log full.out
+
+divider:
+	iverilog $(OPT) -D TEST_DIVIDER tbn/testbench.v $(RTL) -o divider.out
+	vvp -n -l divider.log divider.out
+
+gtk:
+	gtkwave waves.dump waves.sav
+
+clean:
+	rm -rf *.out
+	rm -rf *.log
