@@ -23,11 +23,10 @@ reg [31:0] config_data;
 
 trigger_adv adv (
   clock, reset, 
-  dataIn, validIn, arm,
+  dataIn, validIn, arm, 1'b0,
   wrSelect, wrChain, config_data,
   // outputs...
   run, capture);
-
 
 always @ (posedge clock)
 begin
