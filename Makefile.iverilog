@@ -18,7 +18,6 @@ RTL     = rtl/async_fifo.v      \
           rtl/demux.v           \
           rtl/filter.v          \
           rtl/flags.v           \
-          rtl/gray.v            \
           rtl/iomodules.v       \
           rtl/Logic_Sniffer.v   \
           rtl/meta.v            \
@@ -42,8 +41,8 @@ OPT = -D NOSST -D ICARUS -I rtl
 
 all: adv adv2 rle rle2 full divider
 
-adv: tbn/testbench_adv.v rtl/timer.v rtl/stubs.v rtl/regs.v
-	iverilog $(OPT) tbn/testbench_adv.v rtl/timer.v rtl/stubs.v rtl/regs.v -o adv.out
+adv: tbn/testbench_adv.v rtl/trigger_adv.v rtl/timer.v rtl/stubs.v rtl/regs.v
+	iverilog $(OPT) tbn/testbench_adv.v rtl/trigger_adv.v rtl/timer.v rtl/stubs.v rtl/regs.v -o adv.out
 	vvp -n -l adv.log adv.out
 
 adv2: tbn/testbench_adv2.v $(RTL)
