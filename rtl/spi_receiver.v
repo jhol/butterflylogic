@@ -39,31 +39,26 @@
 
 `timescale 1ns/100ps
 
-module spi_receiver(
-  clock, sclk, extReset, 
-  mosi, cs, transmitting,
-  // outputs...
-  op, data, execute);
+module spi_receiver (
+  input  wire        clock,
+  input  wire        sclk,
+  input  wire        extReset,
+  input  wire        mosi,
+  input  wire        cs,
+  input  wire        transmitting,
+  output wire  [7:0] op,
+  output wire [31:0] data,
+  output reg         execute
+);
 
-input clock;
-input sclk;
-input extReset;
-input mosi;
-input cs;
-input transmitting;
-output [7:0] op;
-output [31:0] data;
-output execute;
-
-parameter 
-  READOPCODE = 1'h0,
-  READLONG = 1'h1;
+localparam READOPCODE = 1'h0;
+localparam READLONG   = 1'h1;
 
 reg state, next_state;			// receiver state
 reg [1:0] bytecount, next_bytecount;	// count rxed bytes of current command
 reg [7:0] opcode, next_opcode;		// opcode byte
 reg [31:0] databuf, next_databuf;	// data dword
-reg execute, next_execute;
+reg next_execute;
 
 reg [2:0] bitcount, next_bitcount;	// count rxed bits of current byte
 reg [7:0] spiByte, next_spiByte;

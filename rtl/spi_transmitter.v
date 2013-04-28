@@ -33,40 +33,33 @@
 `timescale 1ns/100ps
 
 module spi_transmitter(
-  clock, sclk, extReset,
-  send, send_data, send_valid,
-  writeMeta, meta_data,
-  cs, query_id, query_dataIn, dataIn,
-  // outputs...
-  tx, busy, byteDone);
-
-input clock;
-input sclk;
-input extReset;
-
-input send;
-input [31:0] send_data;
-input [3:0] send_valid;
-input writeMeta;
-input [7:0] meta_data;
-input cs;
-input query_id;
-input query_dataIn;
-input [31:0] dataIn;
-output tx;
-output busy;
-output byteDone;
+  input  wire        clock,
+  input  wire        extReset,
+  input  wire        sclk,
+  input  wire        send,
+  input  wire [31:0] send_data,
+  input  wire  [3:0] send_valid,
+  input  wire        writeMeta,
+  input  wire  [7:0] meta_data,
+  input  wire        cs,
+  input  wire        query_id,
+  input  wire        query_dataIn,
+  input  wire [31:0] dataIn,
+  output reg         tx,
+  output reg         busy,
+  output reg         byteDone
+);
 
 reg [31:0] sampled_send_data, next_sampled_send_data;
 reg [3:0] sampled_send_valid, next_sampled_send_valid;
 reg [2:0] bits, next_bits;
 reg [1:0] bytesel, next_bytesel;
-reg byteDone, next_byteDone;
+reg next_byteDone;
 reg dly_sclk, next_dly_sclk; 
-reg busy, next_busy;
+reg next_busy;
 
 reg [7:0] txBuffer, next_txBuffer;
-reg tx, next_tx;
+reg next_tx;
 //wire tx = txBuffer[7];
 
 reg writeReset, writeByte; 
