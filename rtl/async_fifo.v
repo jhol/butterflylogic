@@ -69,54 +69,45 @@
 //
 //--------------------------------------------------------------------------------
 //
-module async_fifo (
-  wrclk, wrreset, rdclk, rdreset,
+module async_fifo #(
+  parameter FAW = 4,
+  parameter FDW = 32,
+  parameter ASYNC_FIFO_FULLTHRESHOLD = 4		// full when only 4 words remain
+)(
+  input  wire wrclk, wrreset,
+  input  wire rdclk, rdreset,
   // write path
-  space_avail, wrenb, wrdata,
+  output wire           space_avail,
+  input  wire           wrenb,
+  input  wire [FDW-1:0] wrdata,
   // read path
-  read_req, data_avail, 
-  data_valid, data_out);
+  input  wire           read_req,
+  output wire           data_avail,
+  output wire           data_valid,
+  output wire [FDW-1:0] data_out
+);
 
-parameter ASYNC_FIFO_MAXINDEX = 3;
-parameter ASYNC_FIFO_MAXDATA = 31;
-parameter ASYNC_FIFO_FULLTHRESHOLD = 4;		// full when only 4 words remain
-
-input wrclk, wrreset;
-input rdclk, rdreset;
-
-// Write path...
-output space_avail;
-input wrenb;
-input [ASYNC_FIFO_MAXDATA:0] wrdata;
-
-// Read path...
-input read_req;
-output data_avail, data_valid;
-output [ASYNC_FIFO_MAXDATA:0] data_out;
-
-wire [ASYNC_FIFO_MAXINDEX+1:0] stable_wrptr, stable_rdptr;
-wire [ASYNC_FIFO_MAXINDEX:0] ram_wraddr, ram_rdaddr;
-wire [ASYNC_FIFO_MAXDATA:0] ram_wrdata, ram_rddata;
+wire [FAW  :0] stable_wrptr, stable_rdptr;
+wire [FAW-1:0] ram_wraddr, ram_rdaddr;
+wire [FDW-1:0] ram_wrdata, ram_rddata;
 
 //
 // Instantiate RAM...
 //
 async_fifo_ram #(
-  .ASYNC_FIFO_MAXINDEX (ASYNC_FIFO_MAXINDEX),
-  .ASYNC_FIFO_MAXDATA  (ASYNC_FIFO_MAXDATA)
+  .FAW  (FAW),
+  .FDW  (FDW)
 ) ram (
   wrclk, rdclk, 
   ram_wrenb, ram_wraddr, ram_wrdata, 
   ram_rdenb, ram_rdaddr, ram_rddata);
 
-
-
 //
 // Instantiate write path...
 //
 async_fifo_wrpath #(
-  .ASYNC_FIFO_MAXINDEX      (ASYNC_FIFO_MAXINDEX     ),
-  .ASYNC_FIFO_MAXDATA       (ASYNC_FIFO_MAXDATA      ),
+  .FAW  (FAW),
+  .FDW  (FDW),
   .ASYNC_FIFO_FULLTHRESHOLD (ASYNC_FIFO_FULLTHRESHOLD)
 ) wrpath (
   wrclk, wrreset, 
@@ -124,14 +115,12 @@ async_fifo_wrpath #(
   ram_wrenb, ram_wraddr, ram_wrdata,
   stable_wrptr, stable_rdptr);
 
-
-
 //
 // Instantiate read path...
 //
 async_fifo_rdpath #(
-  .ASYNC_FIFO_MAXINDEX (ASYNC_FIFO_MAXINDEX),
-  .ASYNC_FIFO_MAXDATA  (ASYNC_FIFO_MAXDATA )
+  .FAW  (FAW),
+  .FDW  (FDW)
 ) rdpath (
   rdclk, rdreset, 
   read_req, data_avail, 
@@ -139,9 +128,7 @@ async_fifo_rdpath #(
   ram_rdenb, ram_rdaddr, ram_rddata,
   stable_wrptr, stable_rdptr);
 
-
 endmodule
-
 
 
 ///////////////////////////////////////////////////////////
@@ -154,8 +141,8 @@ module async_fifo_wrpath (
   ram_wrenb, ram_wraddr, ram_wrdata,
   stable_wrptr, stable_rdptr);
 
-parameter ASYNC_FIFO_MAXINDEX = 3;
-parameter ASYNC_FIFO_MAXDATA = 31;
+parameter FAW = 4;
+parameter FDW = 32;
 parameter ASYNC_FIFO_FULLTHRESHOLD = 4;
 
 input clk, reset;
@@ -163,33 +150,33 @@ input clk, reset;
 // FIFO interface...
 output space_avail;
 input data_valid;
-input [ASYNC_FIFO_MAXDATA:0] wrdata;
+input [FDW-1:0] wrdata;
 
 // RAM interface...
 output ram_wrenb;
-output [ASYNC_FIFO_MAXINDEX:0] ram_wraddr;
-output [ASYNC_FIFO_MAXDATA:0] ram_wrdata;
+output [FAW-1:0] ram_wraddr;
+output [FDW-1:0] ram_wrdata;
 
 // Sync interface...
-output [ASYNC_FIFO_MAXINDEX+1:0] stable_wrptr;
-input [ASYNC_FIFO_MAXINDEX+1:0] stable_rdptr;
+output [FAW-1+1:0] stable_wrptr;
+input [FAW-1+1:0] stable_rdptr;
 
-localparam WIDTH = ASYNC_FIFO_MAXINDEX+2;
+localparam WIDTH = FAW-1+2;
 `include "gray.v"
 
 
 //
 // Registers...
 //
-reg [ASYNC_FIFO_MAXINDEX+1:0] stable_wrptr, next_stable_wrptr;
-reg [ASYNC_FIFO_MAXINDEX+1:0] wrptr, next_wrptr;
-reg [ASYNC_FIFO_MAXINDEX+1:0] rdptr, next_rdptr;
+reg [FAW-1+1:0] stable_wrptr, next_stable_wrptr;
+reg [FAW-1+1:0] wrptr, next_wrptr;
+reg [FAW-1+1:0] rdptr, next_rdptr;
 reg space_avail, next_space_avail;
 
-wire [ASYNC_FIFO_MAXINDEX+1:0] wrptr_plus1 = wrptr+1'b1;
-wire [ASYNC_FIFO_MAXINDEX+1:0] fifo_depth = wrptr-rdptr;
+wire [FAW-1+1:0] wrptr_plus1 = wrptr+1'b1;
+wire [FAW-1+1:0] fifo_depth = wrptr-rdptr;
 
-wire [ASYNC_FIFO_MAXINDEX+1:0] gray_rdptr;
+wire [FAW-1+1:0] gray_rdptr;
 full_synchronizer #(WIDTH) sync_gray_rdptr (clk, reset, stable_rdptr, gray_rdptr);
 
 
@@ -197,8 +184,8 @@ full_synchronizer #(WIDTH) sync_gray_rdptr (clk, reset, stable_rdptr, gray_rdptr
 // RAM interface...
 //
 wire ram_wrenb = data_valid;
-wire [ASYNC_FIFO_MAXINDEX:0] ram_wraddr = wrptr[ASYNC_FIFO_MAXINDEX:0];
-wire [ASYNC_FIFO_MAXDATA:0] ram_wrdata = wrdata;
+wire [FAW-1:0] ram_wraddr = wrptr[FAW-1:0];
+wire [FDW-1:0] ram_wrdata = wrdata;
 
 
 //
@@ -209,17 +196,17 @@ begin
   stable_wrptr = 0;
   rdptr = 0;
 end
-always @ (posedge clk or posedge reset)
+always @ (posedge clk, posedge reset)
 begin
   if (reset) 
     begin
-      stable_wrptr = 0;
-      rdptr = 0;
+      stable_wrptr <= 0;
+      rdptr <= 0;
     end
   else
     begin
-      stable_wrptr = next_stable_wrptr;
-      rdptr = next_rdptr;
+      stable_wrptr <= next_stable_wrptr;
+      rdptr <= next_rdptr;
     end
 end
 
@@ -243,18 +230,18 @@ always @ (posedge clk or posedge reset)
 begin
   if (reset) 
     begin
-      space_avail = 1'b1;
-      wrptr = 0;
+      space_avail <= 1'b1;
+      wrptr <= 0;
     end
   else
     begin
-      space_avail = next_space_avail;
-      wrptr = next_wrptr;
+      space_avail <= next_space_avail;
+      wrptr <= next_wrptr;
       // synthesis translate_off
       if (data_valid)
 	begin
           #1; 
-	  if (fifo_depth >= (1<<(ASYNC_FIFO_MAXINDEX+1)))
+	  if (fifo_depth >= (1<<(FAW-1+1)))
             begin
               $display ("%t: FIFO OVERFLOW!",$realtime);
               $finish;
@@ -267,7 +254,7 @@ end
 always @(*)
 begin
   #1;
-  next_space_avail = fifo_depth<((1<<(ASYNC_FIFO_MAXINDEX+1))-ASYNC_FIFO_FULLTHRESHOLD);
+  next_space_avail = fifo_depth<((1<<(FAW-1+1))-ASYNC_FIFO_FULLTHRESHOLD);
   next_wrptr = (data_valid && space_avail) ? wrptr_plus1 : wrptr;
 end
 endmodule
@@ -286,46 +273,46 @@ module async_fifo_rdpath (
   ram_rdenb, ram_rdaddr, ram_rddata,
   stable_wrptr, stable_rdptr);
 
-parameter ASYNC_FIFO_MAXINDEX = 3;
-parameter ASYNC_FIFO_MAXDATA = 31;
+parameter FAW = 4;
+parameter FDW = 32;
 
 input clk, reset;
 
 // FIFO interface...
 input read_req;
 output data_avail, data_valid;
-output [ASYNC_FIFO_MAXDATA:0] data_out;
+output [FDW-1:0] data_out;
 
 // RAM interface...
 output ram_rdenb;
-output [ASYNC_FIFO_MAXINDEX:0] ram_rdaddr;
-input [ASYNC_FIFO_MAXDATA:0] ram_rddata;
+output [FAW-1:0] ram_rdaddr;
+input [FDW-1:0] ram_rddata;
 
 // Sync interface...
-input [ASYNC_FIFO_MAXINDEX+1:0] stable_wrptr;
-output [ASYNC_FIFO_MAXINDEX+1:0] stable_rdptr;
+input [FAW-1+1:0] stable_wrptr;
+output [FAW-1+1:0] stable_rdptr;
 
-localparam WIDTH = ASYNC_FIFO_MAXINDEX+2;
+localparam WIDTH = FAW-1+2;
 `include "gray.v"
 
 
 //
 // Registers...
 //
-reg [ASYNC_FIFO_MAXINDEX+1:0] stable_rdptr, next_stable_rdptr;
-reg [ASYNC_FIFO_MAXINDEX+1:0] wrptr, next_wrptr;
+reg [FAW-1+1:0] stable_rdptr, next_stable_rdptr;
+reg [FAW-1+1:0] wrptr, next_wrptr;
 
 reg data_avail, next_data_avail;
 reg data_valid, next_data_valid;
-reg [ASYNC_FIFO_MAXINDEX+1:0] rdptr, next_rdptr;
-reg [ASYNC_FIFO_MAXDATA:0] data_out, next_data_out;
+reg [FAW-1+1:0] rdptr, next_rdptr;
+reg [FDW-1:0] data_out, next_data_out;
 
 wire ram_rdenb = data_avail;
-reg [ASYNC_FIFO_MAXINDEX:0] ram_rdaddr;
+reg [FAW-1:0] ram_rdaddr;
 
-wire [ASYNC_FIFO_MAXINDEX+1:0] rdptr_plus1 = rdptr+1'b1;
+wire [FAW-1+1:0] rdptr_plus1 = rdptr+1'b1;
 
-wire [ASYNC_FIFO_MAXINDEX+1:0] gray_wrptr;
+wire [FAW-1+1:0] gray_wrptr;
 full_synchronizer #(WIDTH) sync_gray_wrptr (clk, reset, stable_wrptr, gray_wrptr);
 
 
@@ -337,12 +324,12 @@ begin
   stable_rdptr = 0;
   wrptr = 0;
 end
-always @ (posedge clk or posedge reset)
+always @ (posedge clk, posedge reset)
 begin
   if (reset)
     begin
-      stable_rdptr = 0;
-      wrptr = 0;
+      stable_rdptr <= 0;
+      wrptr <= 0;
     end
   else
     begin
@@ -368,28 +355,28 @@ begin
   data_avail = 1'b0;
   data_valid = 1'b0;
 end
-always @ (posedge clk or posedge reset)
+always @ (posedge clk, posedge reset)
 begin
   if (reset) 
     begin
-      rdptr = 0;
-      data_avail = 1'b0;
-      data_valid = 1'b0;
+      rdptr <= 0;
+      data_avail <= 1'b0;
+      data_valid <= 1'b0;
     end
   else
     begin
-      rdptr = next_rdptr;
-      data_avail = next_data_avail;
-      data_valid = next_data_valid;
+      rdptr <= next_rdptr;
+      data_avail <= next_data_avail;
+      data_valid <= next_data_valid;
     end
 end
-always @ (posedge clk) data_out = next_data_out;
+always @ (posedge clk) data_out <= next_data_out;
 
 always @(*)
 begin
   #1;
   next_rdptr = rdptr;
-  next_data_out = {(ASYNC_FIFO_MAXDATA+1){data_avail}} & ram_rddata;
+  next_data_out = {(FDW-1+1){data_avail}} & ram_rddata;
   next_data_valid = 1'b0;
 
   if (read_req && data_avail)
@@ -399,7 +386,7 @@ begin
     end
 
   next_data_avail = (next_wrptr != next_rdptr);
-  ram_rdaddr = next_rdptr[ASYNC_FIFO_MAXINDEX:0];
+  ram_rdaddr = next_rdptr[FAW-1:0];
 end
 endmodule
 
@@ -412,32 +399,32 @@ endmodule
 //
 module async_fifo_ram (wrclk, rdclk, wrenb, wrptr, wrdata, rdenb, rdptr, rddata);
 
-parameter ASYNC_FIFO_MAXINDEX = 4;
-parameter ASYNC_FIFO_MAXDATA = 31;
+parameter FAW = 4;
+parameter FDW = 32;
 
 input wrclk, rdclk;
 input wrenb, rdenb;
-input [ASYNC_FIFO_MAXINDEX:0] wrptr, rdptr;
-input [ASYNC_FIFO_MAXDATA:0] wrdata;
-output [ASYNC_FIFO_MAXDATA:0] rddata;
+input [FAW-1:0] wrptr, rdptr;
+input [FDW-1:0] wrdata;
+output [FDW-1:0] rddata;
 
 wire #1 dly_wrenb = wrenb;
-wire [ASYNC_FIFO_MAXINDEX:0] #1 dly_wrptr = wrptr;
-wire [ASYNC_FIFO_MAXDATA:0] #1 dly_wrdata = wrdata;
+wire [FAW-1:0] #1 dly_wrptr = wrptr;
+wire [FDW-1:0] #1 dly_wrdata = wrdata;
 
 wire #1 dly_rdenb = rdenb;
-wire [ASYNC_FIFO_MAXINDEX:0] #1 dly_rdptr = rdptr;
+wire [FAW-1:0] #1 dly_rdptr = rdptr;
 
-reg [ASYNC_FIFO_MAXDATA:0] mem[0:(1<<(ASYNC_FIFO_MAXINDEX+1))-1];
-reg [ASYNC_FIFO_MAXINDEX:0] rdptr_reg;
+reg [FDW-1:0] mem[0:(1<<(FAW-1+1))-1];
+reg [FAW-1:0] rdptr_reg;
 assign rddata = mem[rdptr_reg];
 
 always @ (posedge wrclk)
 begin
-  if (dly_wrenb) mem[dly_wrptr] = dly_wrdata;
+  if (dly_wrenb) mem[dly_wrptr] <= dly_wrdata;
 end
 always @ (posedge rdclk)
 begin
-  rdptr_reg = dly_rdptr;
+  rdptr_reg <= dly_rdptr;
 end
 endmodule
