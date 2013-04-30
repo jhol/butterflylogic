@@ -1,4 +1,3 @@
-
 RTL_SPI = rtl/spi_receiver.v    \
           rtl/spi_slave.v       \
           rtl/spi_transmitter.v
@@ -37,7 +36,11 @@ TBN     = tbn/testbench_adv2.v  \
           tbn/testbench_rle.v   \
           tbn/testbench.v
 
-OPT = -g2012 -D NOWAVE -D ICARUS -I rtl
+ifdef WAVE
+OPT = -g2012 -I rtl -D ICARUS -D WAVE
+else
+OPT = -g2012 -I rtl -D ICARUS
+endif
 
 all: adv adv2 rle rle2 full divider
 

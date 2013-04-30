@@ -338,7 +338,7 @@ end
 // Initialized wavedump...
 //
 initial $timeformat (-9,1," ns",0);
-`ifndef NOWAVE
+`ifdef WAVE
 initial 
 begin
   $display ("%t: Starting wave dump...",$realtime);

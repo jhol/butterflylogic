@@ -1,6 +1,5 @@
 `timescale 1ns/100ps
 
-
 //
 // Full Logic Sniffer version of advanced trigger testbench... much slower...
 //
@@ -550,17 +549,15 @@ end
 //
 // Initialized wavedump...
 //
-reg [0:511] targetsst[0:0];
-reg gotsst;
-integer i;
-
+initial $timeformat (-9,1," ns",0);
+`ifdef WAVE
 initial 
 begin
-  $timeformat (-9,1," ns",0);
   $display ("%t: Starting wave dump...",$realtime);
   $dumpfile ("waves.dump");
   $dumpvars(0);
 end
+`endif
 
 
 reg [7:0] miso_byte = 0;
