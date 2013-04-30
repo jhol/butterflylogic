@@ -64,7 +64,7 @@ full: tbn/testbench.v $(RTL)
 	iverilog $(OPT) tbn/testbench.v $(RTL) -o full.out
 	vvp -n -l full.log full.out
 
-divider:
+divider: tbn/testbench.v $(RTL)
 	iverilog $(OPT) -D TEST_DIVIDER tbn/testbench.v $(RTL) -o divider.out
 	vvp -n -l divider.log divider.out
 
@@ -72,5 +72,6 @@ gtk:
 	gtkwave waves.dump waves.sav
 
 clean:
+	rm -rf *.vcd
 	rm -rf *.out
 	rm -rf *.log
