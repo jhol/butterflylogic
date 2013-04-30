@@ -1,86 +1,65 @@
-
 //
 // Delay a signal by one clock...
 //
-module dly_signal (clk, indata, outdata);
-parameter WIDTH = 1;
-input clk;
-input [WIDTH-1:0] indata;
-output [WIDTH-1:0] outdata;
-reg [WIDTH-1:0] outdata, next_outdata;
-always @(posedge clk) outdata = next_outdata;
-always @*
-begin
-  #1;
-  next_outdata = indata;
-end
+module dly_signal #(
+  parameter WIDTH = 1
+)(
+  input  wire             clk,
+  input  wire [WIDTH-1:0] indata,
+  output reg  [WIDTH-1:0] outdata
+);
+  always @(posedge clk) outdata <= #1 indata;
 endmodule
-
-
 
 //
 // Delay & Synchronizer pipelines...
 //
-module pipeline_stall (clk, reset, datain, dataout);
-parameter WIDTH = 1;
-parameter DELAY = 1;
-input clk, reset;
-input [WIDTH-1:0] datain;
-output [WIDTH-1:0] dataout;
-reg [(WIDTH*DELAY)-1:0] dly_datain, next_dly_datain;
-assign dataout = dly_datain[(WIDTH*DELAY)-1 : WIDTH*(DELAY-1)];
-initial dly_datain = 0;
-always @ (posedge clk or posedge reset)
-begin
-  if (reset)
-    dly_datain = 0;
-  else dly_datain = next_dly_datain;
-end
-always @*
-begin
-  #1;
-  next_dly_datain = {dly_datain, datain};
-end
+module pipeline_stall #(
+  parameter WIDTH = 1,
+  parameter DELAY = 1
+)(
+  input  wire             clk,
+  input  wire             reset,
+  input  wire [WIDTH-1:0] datain,
+  output wire [WIDTH-1:0] dataout
+);
+  reg [(WIDTH*DELAY)-1:0] dly_datain = 0;
+  assign dataout = dly_datain[(WIDTH*DELAY)-1 : WIDTH*(DELAY-1)];
+  always @ (posedge clk, posedge reset)
+  if (reset) dly_datain <= 0;
+  else       dly_datain <= {dly_datain, datain};
 endmodule
-
-
 
 //
 // Two back to back flop's.  A full synchronizer (which XISE 
 // will convert into a nice shift register using a single LUT)
 // to sample asynchronous signals safely.
 //
-module full_synchronizer (clk, reset, datain, dataout);
-parameter WIDTH = 1;
-input clk, reset;
-input [WIDTH-1:0] datain;
-output [WIDTH-1:0] dataout;
-pipeline_stall #(WIDTH,2) sync (clk, reset, datain, dataout);
+module full_synchronizer #(
+  parameter WIDTH = 1
+)(
+  input  wire             clk,
+  input  wire             reset,
+  input  wire [WIDTH-1:0] datain,
+  output wire [WIDTH-1:0] dataout
+);
+  pipeline_stall #(WIDTH,2) sync (clk, reset, datain, dataout);
 endmodule
-
 
 //
 // Create a stretched synchronized reset pulse...
 //
-module reset_sync (clk, hardreset, reset);
-input clk, hardreset;
-output reset;
+module reset_sync (
+  input  wire clk,
+  input  wire hardreset,
+  output wire reset
+);
 
-reg [3:0] reset_reg, next_reset_reg;
+reg [3:0] reset_reg = 4'hF;
 assign reset = reset_reg[3];
 
-initial reset_reg = 4'hF;
-always @ (posedge clk or posedge hardreset)
-begin
-  if (hardreset)
-    reset_reg = 4'hF;
-  else reset_reg = next_reset_reg;
-end
+always @ (posedge clk, posedge hardreset)
+if (hardreset) reset_reg <= 4'hF;
+else           reset_reg <= {reset_reg,1'b0};
 
-always @*
-begin
-  next_reset_reg = {reset_reg,1'b0};
-end
 endmodule
-
-

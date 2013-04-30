@@ -36,58 +36,42 @@
 
 `timescale 1ns/100ps
 
-module controller(
-  clock, reset, run,
-  wrSize, config_data,
-  validIn, dataIn, busy, arm, 
+module controller (
+  input  wire        clock,
+  input  wire        reset,
+  input  wire        run,
+  input  wire        wrSize,
+  input  wire [31:0] config_data,
+  input  wire        validIn,
+  input  wire [31:0] dataIn,
+  input  wire        busy,
+  input  wire        arm,
   // outputs...
-  send, memoryWrData, memoryRead, 
-  memoryWrite, memoryLastWrite);
+  output reg         send,
+  output reg  [31:0] memoryWrData,
+  output reg         memoryRead,
+  output reg         memoryWrite,
+  output reg         memoryLastWrite
+);
 
-input clock;
-input reset;
-input run;
-input wrSize;
-input [31:0] config_data;
-input validIn;
-input [31:0] dataIn;
-input busy;
-input arm;
+reg [15:0] fwd; // Config registers...
+reg [15:0] bwd;
 
-output send;
-output [31:0] memoryWrData;
-output memoryRead;
-output memoryWrite;
-output memoryLastWrite;
-
-reg [15:0] fwd, next_fwd; // Config registers...
-reg [15:0] bwd, next_bwd;
-
-reg send, next_send;
-reg memoryRead, next_memoryRead;
-reg memoryWrite, next_memoryWrite;
-reg memoryLastWrite, next_memoryLastWrite;
+reg next_send;
+reg next_memoryRead;
+reg next_memoryWrite;
+reg next_memoryLastWrite;
 
 reg [17:0] counter, next_counter; 
 wire [17:0] counter_inc = counter+1'b1;
 
-
-reg [31:0] memoryWrData, next_memoryWrData;
 always @(posedge clock) 
-begin
-  memoryWrData = next_memoryWrData;
-end
-always @*
-begin
-  #1; next_memoryWrData = dataIn;
-end
-
-
+memoryWrData <= dataIn;
 
 //
 // Control FSM...
 //
-parameter [2:0]
+localparam [2:0]
   IDLE =     3'h0,
   SAMPLE =   3'h1,
   DELAY =    3'h2,
@@ -97,28 +81,23 @@ parameter [2:0]
 reg [2:0] state, next_state; 
 
 initial state = IDLE;
-always @(posedge clock or posedge reset) 
-begin
-  if (reset)
-    begin
-      state = IDLE;
-      memoryWrite = 1'b0;
-      memoryLastWrite = 1'b0;
-      memoryRead = 1'b0;
-    end
-  else 
-    begin
-      state = next_state;
-      memoryWrite = next_memoryWrite;
-      memoryLastWrite = next_memoryLastWrite;
-      memoryRead = next_memoryRead;
-    end
+always @(posedge clock, posedge reset) 
+if (reset) begin
+  state           <= IDLE;
+  memoryWrite     <= 1'b0;
+  memoryLastWrite <= 1'b0;
+  memoryRead      <= 1'b0;
+end else begin
+  state           <= next_state;
+  memoryWrite     <= next_memoryWrite;
+  memoryLastWrite <= next_memoryLastWrite;
+  memoryRead      <= next_memoryRead;
 end
 
 always @(posedge clock)
 begin
-  counter = next_counter;
-  send = next_send;
+  counter <= next_counter;
+  send    <= next_send;
 end
 
 // FSM to control the controller action
@@ -196,22 +175,6 @@ end
 // Set speed and size registers if indicated...
 //
 always @(posedge clock) 
-begin
-  fwd = next_fwd;
-  bwd = next_bwd;
-end
+if (wrSize) {fwd, bwd} <= config_data[31:0];
 
-always @*
-begin
-  #1;
-  next_fwd = fwd;
-  next_bwd = bwd;
-
-  if (wrSize) 
-    begin
-      next_fwd = config_data[31:16];
-      next_bwd = config_data[15:0];
-    end
-end
 endmodule
-

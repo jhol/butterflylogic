@@ -34,25 +34,17 @@
 `timescale 1ns/100ps
 
 (* equivalent_register_removal = "no" *) 
-module demux(clock, indata, indata180, outdata);
+module demux (
+  input  wire        clock,
+  input  wire [15:0] indata,
+  input  wire [15:0] indata180,
+  output wire [31:0] outdata
+);
 
-input clock;
-input [15:0] indata;
-input [15:0] indata180;
-output [31:0] outdata;
-
-reg [15:0] dly_indata180, next_dly_indata180;
+reg [15:0] dly_indata180;
 assign outdata = {dly_indata180,indata};
 
 always @(posedge clock) 
-begin
-  dly_indata180 = next_dly_indata180;
-end
-always @*
-begin
-  #1;
-  next_dly_indata180 = indata180;
-end
+dly_indata180 <= indata180;
 
 endmodule
-

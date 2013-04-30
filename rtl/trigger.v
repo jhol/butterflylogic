@@ -35,33 +35,29 @@
 
 `timescale 1ns/100ps
 
-module trigger(
-  clock, reset, 
-  dataIn, validIn, 
-  wrMask, wrValue, wrConfig, config_data,
-  arm, demux_mode, 
-  // outputs...
-  capture, run);
+module trigger (
+  // system signals
+  input  wire        clock,
+  input  wire        reset,
+  // input stream
+  input  wire        validIn,
+  input  wire [31:0] dataIn,		// Channel data...
+  //
+  input  wire  [3:0] wrMask,		// Write trigger mask register
+  input  wire  [3:0] wrValue,		// Write trigger value register
+  input  wire  [3:0] wrConfig,		// Write trigger config register
+  input  wire [31:0] config_data,	// Data to write into trigger config regs
+  input  wire        arm,
+  input  wire        demux_mode,
+  output reg         capture,		// Store captured data in fifo.
+  output wire        run		// Tell controller when trigger hit.
+);
 
-input clock, reset;
-input validIn;
-input [31:0] dataIn;		// Channel data...
-input [3:0] wrMask;		// Write trigger mask register
-input [3:0] wrValue;		// Write trigger value register
-input [3:0] wrConfig;		// Write trigger config register
-input [31:0] config_data;	// Data to write into trigger config regs
-input arm;
-input demux_mode;
-output capture;			// Store captured data in fifo.
-output run;			// Tell controller when trigger hit.
-
-reg capture, next_capture;
-reg [1:0] levelReg, next_levelReg;
+reg [1:0] levelReg = 2'b00;
 
 // if any of the stages set run, then capturing starts...
 wire [3:0] stageRun;
-wire run = |stageRun;
-
+assign run = |stageRun;
 
 //
 // IED - Shift register initialization handler...
@@ -142,10 +138,10 @@ end
 
 always @ (posedge clock)
 begin
-  maskRegister = next_maskRegister;
-  valueRegister = next_valueRegister;
-  wrcount = next_wrcount;
-  wrenb = next_wrenb;
+  maskRegister  <= next_maskRegister;
+  valueRegister <= next_valueRegister;
+  wrcount       <= next_wrcount;
+  wrenb         <= next_wrenb;
 end
 
 always @*
@@ -187,64 +183,36 @@ end
 // Instantiate stages...
 //
 wire [3:0] stageMatch;
-stage stage0 (
-  .clock(clock), .reset(reset), .dataIn(dataIn), .validIn(validIn), 
-//  .wrMask(wrMask[0]), .wrValue(wrValue[0]), 
-  .wrenb(wrenb[0]), .din(wrdata),
-  .wrConfig(wrConfig[0]), .config_data(config_data),
-  .arm(arm), .level(levelReg), .demux_mode(demux_mode),
-  .run(stageRun[0]), .match(stageMatch[0]));
-
-stage stage1 (
-  .clock(clock), .reset(reset), .dataIn(dataIn), .validIn(validIn), 
-//  .wrMask(wrMask[1]), .wrValue(wrValue[1]), 
-  .wrenb(wrenb[1]), .din(wrdata),
-  .wrConfig(wrConfig[1]), .config_data(config_data),
-  .arm(arm), .level(levelReg), .demux_mode(demux_mode),
-  .run(stageRun[1]), .match(stageMatch[1]));
-
-stage stage2 (
-  .clock(clock), .reset(reset), .dataIn(dataIn), .validIn(validIn), 
-//  .wrMask(wrMask[2]), .wrValue(wrValue[2]), 
-  .wrenb(wrenb[2]), .din(wrdata),
-  .wrConfig(wrConfig[2]), .config_data(config_data),
-  .arm(arm), .level(levelReg), .demux_mode(demux_mode),
-  .run(stageRun[2]), .match(stageMatch[2]));
-
-stage stage3 (
-  .clock(clock), .reset(reset), .dataIn(dataIn), .validIn(validIn), 
-//  .wrMask(wrMask[3]), .wrValue(wrValue[3]), 
-  .wrenb(wrenb[3]), .din(wrdata),
-  .wrConfig(wrConfig[3]), .config_data(config_data),
-  .arm(arm), .level(levelReg), .demux_mode(demux_mode),
-  .run(stageRun[3]), .match(stageMatch[3]));
-
+stage stage [3:0] (
+  .clock      (clock),
+  .reset      (reset),
+  .dataIn     (dataIn),
+  .validIn    (validIn), 
+//.wrMask     (wrMask),
+//.wrValue    (wrValue), 
+  .wrenb      (wrenb),
+  .din        (wrdata),
+  .wrConfig   (wrConfig),
+  .config_data(config_data),
+  .arm        (arm),
+  .level      (levelReg),
+  .demux_mode (demux_mode),
+  .run        (stageRun),
+  .match      (stageMatch)
+);
 
 //
 // Increase level on match (on any level?!)...
 //
-initial levelReg = 2'b00;
-always @(posedge clock or posedge reset) 
+always @(posedge clock, posedge reset) 
 begin : P2
-  if (reset) 
-    begin
-      capture = 1'b0;
-      levelReg = 2'b00;
-    end
-  else 
-    begin
-      capture = next_capture;
-      levelReg = next_levelReg;
-    end
+  if (reset) begin
+    capture  <= 1'b0;
+    levelReg <= 2'b00;
+  end else begin
+    capture  <= arm | capture;
+    if (|stageMatch) levelReg <= levelReg + 'b1;
+  end
 end
 
-always @*
-begin
-  #1;
-  next_capture = arm | capture;
-  next_levelReg = levelReg;
-  if (|stageMatch) next_levelReg = levelReg + 1;
-end
 endmodule
-
-

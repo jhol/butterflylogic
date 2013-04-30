@@ -116,10 +116,10 @@ spi_transmitter spi_transmitter(
 //
 always @(posedge clock) 
 begin
-  query_id = next_query_id;
-  query_metadata = next_query_metadata;
-  query_dataIn = next_query_dataIn;
-  dly_execute = next_dly_execute;
+  query_id       <= next_query_id;
+  query_metadata <= next_query_metadata;
+  query_dataIn   <= next_query_dataIn;
+  dly_execute    <= next_dly_execute;
 end
 
 always @*

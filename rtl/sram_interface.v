@@ -37,28 +37,27 @@
 
 `timescale 1ns/100ps
 
-module sram_interface(
-  clk, wrFlags, config_data,
-  write, lastwrite, 
-  read, wrdata, 
-  // outputs...
-  rddata, rdvalid);
-
-input clk;
-input wrFlags;
-input [3:0] config_data;
-input read, write, lastwrite;
-input [`BRAM_MAXDATA:0] wrdata;
-output [`BRAM_MAXDATA:0] rddata;
-output [3:0] rdvalid;
-
+module sram_interface #(
+  // memory parameters
+  parameter MSZ = 6*1024,       // size (6K x 36bit)
+  parameter MAW = $clog2(MSZ),  // address width (13bit => 8K)
+  parameter MDW = 36            // data width
+)(
+  input  wire           clk,
+  input  wire           wrFlags,
+  input  wire     [3:0] config_data,
+  input  wire           write,
+  input  wire           lastwrite,
+  input  wire           read,
+  input  wire [MDW-1:0] wrdata,
+  output wire [MDW-1:0] rddata,
+  output reg      [3:0] rdvalid
+);
 
 //
 // Interconnect...
 //
-wire [`BRAM_MAXDATA:0] wrdata;
-wire [`BRAM_MAXDATA:0] ram_dataout;
-
+wire [MDW-1:0] ram_dataout;
 
 //
 // Registers...
@@ -68,10 +67,10 @@ reg [1:0] mode, next_mode;
 reg [3:0] validmask, next_validmask;
 
 reg [3:0] clkenb, next_clkenb;
-reg [`BRAM_MAXINDEX:0] address, next_address;
-reg [3:0] rdvalid, next_rdvalid;
+reg [MAW-1:0] address, next_address;
+reg [3:0] next_rdvalid;
 
-wire maxaddr = &address[`BRAM_MAXINDEX-2:0] & address[`BRAM_MAXINDEX]; // detect 0x17FF
+wire maxaddr = &address[MAW-1-2:0] & address[MAW-1]; // detect 0x17FF
 wire addrzero = ~|address;
 
 
@@ -89,12 +88,12 @@ begin
 end
 always @ (posedge clk)
 begin
-  init = next_init;
-  mode = next_mode;
-  validmask = next_validmask;
-  clkenb = next_clkenb;
-  address = next_address;
-  rdvalid = next_rdvalid;
+  init      <= next_init;
+  mode      <= next_mode;
+  validmask <= next_validmask;
+  clkenb    <= next_clkenb;
+  address   <= next_address;
+  rdvalid   <= next_rdvalid;
 end
 
 
@@ -160,7 +159,7 @@ begin
           2'bx1 : next_clkenb = {clkenb[0],clkenb[3:1]};   // 8 bit
           2'b1x : next_clkenb = {clkenb[1:0],clkenb[3:2]}; // 16 bit
         endcase
-        if (clkenb[0]) next_address = (addrzero) ? `BRAM_MAX_ADDRESS : address-1'b1;
+        if (clkenb[0]) next_address = (addrzero) ? MSZ-1 : address-1'b1;
       end
   endcase
 
@@ -182,7 +181,7 @@ end
 //
 // Prepare RAM input data.  Present write data to all four lanes of RAM.
 //
-reg [`BRAM_MAXDATA:0] ram_datain;
+reg [MDW-1:0] ram_datain;
 always @*
 begin
   #1;
@@ -197,7 +196,7 @@ end
 //
 // Instantiate RAM's (each BRAM6kx9bit in turn instantiates three 2kx9's block RAM's)...
 //
-wire [`BRAM_MAXINDEX:0] #1 ram_ADDR = address;
+wire [MAW-1:0] #1 ram_ADDR = address;
 wire #1 ram_WE = write;
 BRAM6k9bit RAMBG0(
   .CLK(clk), .WE(ram_WE), .EN(clkenb[0]), .ADDR(ram_ADDR),

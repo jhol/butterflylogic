@@ -32,34 +32,26 @@
 
 `timescale 1ns/100ps
 
-module transmitter( 
-  clock, trxClock, reset, disabledGroups,
-  write, wrdata, id, xon, xoff,
-  // outputs
-  tx, busy);
+module transmitter #( 
+  parameter [31:0] FREQ = 100000000;
+  parameter [31:0] BAUDRATE = 115200;
+  parameter BITLENGTH = FREQ / BAUDRATE;
+)(
+  input  wire        clock,
+  input  wire        trxClock,
+  input  wire        reset,
+  input  wire  [3:0] disabledGroups,
+  input  wire        write,		// Data write request
+  input  wire [31:0] wrdata,		// Write data
+  input  wire        id,		// ID output request
+  input  wire        xon,		// Flow control request
+  input  wire        xoff,		// Resume output request
+  output wire        tx,		// Serial tx data
+  output reg         busy		// Busy flag
+);
 
-parameter [31:0] FREQ = 100000000;
-parameter [31:0] BAUDRATE = 115200;
-parameter BITLENGTH = FREQ / BAUDRATE;
-
-input clock;
-input trxClock;
-input reset;
-
-input write;			// Data write request
-input [31:0] wrdata;		// Write data
-input [3:0] disabledGroups;
-
-input id;			// ID output request
-input xon;			// Flow control request
-input xoff;			// Resume output request
-
-output tx;			// Serial tx data
-output busy;			// Busy flag
-
-parameter TRUE = 1'b1;
-parameter FALSE = 1'b0;
-
+localparam TRUE = 1'b1;
+localparam FALSE = 1'b0;
 
 //
 // Registers...
@@ -70,7 +62,7 @@ reg [3:0] bits, next_bits;
 reg [2:0] bytesel, next_bytesel;
 reg paused, next_paused; 
 reg byteDone, next_byteDone; 
-reg busy, next_busy;
+reg next_busy;
 
 reg [9:0] txBuffer, next_txBuffer;
 assign tx = txBuffer[0];
@@ -91,8 +83,8 @@ begin
   byte = 0;
   disabled = 0;
   case (bytesel[1:0]) // synthesys parallel_case
-    2'h0 : begin byte = sampled_wrdata[7:0]; disabled = sampled_disabledGroups[0]; end
-    2'h1 : begin byte = sampled_wrdata[15:8]; disabled = sampled_disabledGroups[1]; end
+    2'h0 : begin byte = sampled_wrdata[ 7: 0]; disabled = sampled_disabledGroups[0]; end
+    2'h1 : begin byte = sampled_wrdata[15: 8]; disabled = sampled_disabledGroups[1]; end
     2'h2 : begin byte = sampled_wrdata[23:16]; disabled = sampled_disabledGroups[2]; end
     2'h3 : begin byte = sampled_wrdata[31:24]; disabled = sampled_disabledGroups[3]; end
   endcase
@@ -104,10 +96,10 @@ end
 //
 always @ (posedge clock) 
 begin
-  counter = next_counter;
-  bits = next_bits;
-  byteDone = next_byteDone;
-  txBuffer = next_txBuffer;
+  counter  <= next_counter;
+  bits     <= next_bits;
+  byteDone <= next_byteDone;
+  txBuffer <= next_txBuffer;
 end
 
 always #1
@@ -144,25 +136,20 @@ parameter [1:0] IDLE = 0, SEND = 1, POLL = 2;
 reg [1:0] state, next_state;
 
 always @ (posedge clock or posedge reset) 
-begin
-  if (reset) 
-    begin
-      state = IDLE;
-      sampled_wrdata = 32'h0;
-      sampled_disabledGroups = 4'h0;
-      bytesel = 3'h0;
-      busy = FALSE;
-      paused = FALSE;
-    end 
-  else
-    begin
-      state = next_state;
-      sampled_wrdata = next_sampled_wrdata;
-      sampled_disabledGroups = next_sampled_disabledGroups;
-      bytesel = next_bytesel;
-      busy = next_busy;
-      paused = next_paused;
-    end
+if (reset) begin
+  state                  <= IDLE;
+  sampled_wrdata         <= 32'h0;
+  sampled_disabledGroups <= 4'h0;
+  bytesel                <= 3'h0;
+  busy                   <= FALSE;
+  paused                 <= FALSE;
+end else begin
+  state                  <= next_state;
+  sampled_wrdata         <= next_sampled_wrdata;
+  sampled_disabledGroups <= next_sampled_disabledGroups;
+  bytesel                <= next_bytesel;
+  busy                   <= next_busy;
+  paused                 <= next_paused;
 end
 
 always #1

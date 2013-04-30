@@ -37,42 +37,32 @@
 //`define HEARTBEAT
 //`define SLOW_EXTCLK
 
-module core(
-  clock, extReset, 
-  extClock, extTriggerIn, 
-  opcode, config_data, execute, indata, outputBusy, 
-  // outputs...
-  sampleReady50, outputSend, stableInput,
-  memoryWrData, memoryRead, memoryWrite, memoryLastWrite,
-  extTriggerOut, extClockOut, armLEDnn, 
-  triggerLEDnn, wrFlags, extTestMode);
-
-parameter [31:0] MEMORY_DEPTH=6;
-
-input clock;
-input extReset;			// External reset
-input [7:0] opcode;		// Configuration command from serial/SPI interface
-input [31:0] config_data;
-input execute;			// opcode & config_data valid
-input [31:0] indata;		// Input sample data
-input extClock;
-input outputBusy;
-input extTriggerIn;
-
-output sampleReady50;
-output outputSend;
-output [31:0] stableInput;
-output [31:0] memoryWrData;
-output memoryRead;
-output memoryWrite;
-output memoryLastWrite;
-output extTriggerOut;
-output extClockOut;
-output armLEDnn;
-output triggerLEDnn;
-output wrFlags;
-output extTestMode;
-
+module core #(
+  parameter [31:0] MEMORY_DEPTH=6
+)(
+  input  wire        clock,
+  input  wire        extReset,     // External reset
+  input  wire  [7:0] opcode,       // Configuration command from serial/SPI interface
+  input  wire [31:0] config_data,
+  input  wire        execute,      // opcode & config_data valid
+  input  wire [31:0] indata,       // Input sample data
+  input  wire        extClock,
+  input  wire        outputBusy,
+  input  wire        extTriggerIn,
+  output wire        sampleReady50,
+  output wire        outputSend,
+  output wire [31:0] stableInput,
+  output wire [31:0] memoryWrData,
+  output wire        memoryRead,
+  output wire        memoryWrite,
+  output wire        memoryLastWrite,
+  output wire        extTriggerOut,
+  output wire        extClockOut,
+  output reg         armLEDnn,
+  output reg         triggerLEDnn,
+  output wire        wrFlags,
+  output wire        extTestMode
+);
 
 //
 // Interconnect...
@@ -108,21 +98,14 @@ wire sampleClock;
 //
 `ifdef SLOW_EXTCLK
 
-reg [1:0] scount, next_scount;
+reg [1:0] scount = 0;
 assign extClockOut = scount[1];
-initial scount=0;
 always @ (posedge sampleClock)
-begin
-  scount = next_scount;
-end
-always @*
-begin
-  next_scount = scount+1'b1;
-end
+scount <= scount + 'b1;
 
 `else
 
-wire extClockOut = sampleClock;
+assign extClockOut = sampleClock;
 
 `endif
 
@@ -148,7 +131,7 @@ wire extClock_mode = flags_reg[6];                 // Use external clock for sam
 wire falling_edge = flags_reg[7];                  // Capture on falling edge of sample clock.
 wire rleEnable = flags_reg[8];                     // RLE compress samples
 wire numberScheme = flags_reg[9];                  // Swap upper/lower 16 bits
-wire extTestMode = flags_reg[10] && !numberScheme; // Generate external test pattern on upper 16 bits of indata
+assign extTestMode = flags_reg[10] && !numberScheme; // Generate external test pattern on upper 16 bits of indata
 wire intTestMode = flags_reg[11];                  // Sample internal test pattern instead of indata[31:0]
 wire [1:0] rle_mode = flags_reg[15:14];            // Change how RLE logic issues <value> & <counts>
 
@@ -157,7 +140,7 @@ wire [1:0] rle_mode = flags_reg[15:14];            // Change how RLE logic issue
 // Sample external trigger signals...
 //
 wire run_basic, run_adv, run; 
-dly_signal extTriggerIn_reg (clock, extTriggerIn, sampled_extTriggerIn);
+dly_signal extTriggerIn_reg  (clock, extTriggerIn, sampled_extTriggerIn);
 dly_signal extTriggerOut_reg (clock, run, extTriggerOut);
 
 assign run = run_basic | run_adv | sampled_extTriggerIn;
@@ -167,8 +150,8 @@ assign run = run_basic | run_adv | sampled_extTriggerIn;
 //
 // Logic Sniffers LEDs are connected to 3.3V so a logic 0 turns the LED on.
 //
-reg armLEDnn, next_armLEDnn;
-reg triggerLEDnn, next_triggerLEDnn;
+reg next_armLEDnn;
+reg next_triggerLEDnn;
 
 `ifdef HEARTBEAT
 reg [31:0] hcount, next_hcount;
@@ -213,210 +196,221 @@ end
 // Select between internal and external sampling clock...
 //
 BUFGMUX BUFGMUX_intex(
-  .O(sampleClock), // Clock MUX output
-  .I0(clock),      // Clock0 input
-  .I1(extClock),   // Clock1 input
-  .S(extClock_mode));
+  .O  (sampleClock), // Clock MUX output
+  .I0 (clock),      // Clock0 input
+  .I1 (extClock),   // Clock1 input
+  .S  (extClock_mode)
+);
 
 
 //
 // Decode commands & config registers...
 //
 decoder decoder(
-  .clock(clock),
-  .execute(execute),
-  .opcode(opcode),
+  .clock        (clock),
+  .execute      (execute),
+  .opcode       (opcode),
   // outputs...
-  .wrtrigmask(wrtrigmask),
-  .wrtrigval(wrtrigval),
-  .wrtrigcfg(wrtrigcfg),
-  .wrspeed(wrDivider),
-  .wrsize(wrsize),
-  .wrFlags(wrFlags),
-  .wrTrigSelect(wrTrigSelect),
-  .wrTrigChain(wrTrigChain),
-  .finish_now(finish_now),
-  .arm_basic(arm_basic),
-  .arm_adv(arm_adv),
-  .resetCmd(resetCmd));
-
+  .wrtrigmask   (wrtrigmask),
+  .wrtrigval    (wrtrigval),
+  .wrtrigcfg    (wrtrigcfg),
+  .wrspeed      (wrDivider),
+  .wrsize       (wrsize),
+  .wrFlags      (wrFlags),
+  .wrTrigSelect (wrTrigSelect),
+  .wrTrigChain  (wrTrigChain),
+  .finish_now   (finish_now),
+  .arm_basic    (arm_basic),
+  .arm_adv      (arm_adv),
+  .resetCmd     (resetCmd)
+);
 
 //
 // Configuration flags register...
 //
 flags flags(
-  .clock(clock),
-  .wrFlags(wrFlags),
-  .config_data(config_data),
-  .finish_now(finish_now),
+  .clock       (clock),
+  .wrFlags     (wrFlags),
+  .config_data (config_data),
+  .finish_now  (finish_now),
   // outputs...
-  .flags_reg(flags_reg));
-
+  .flags_reg   (flags_reg)
+);
 
 //
 // Capture input relative to sampleClock...
 //
 sync sync(
-  .clock(sampleClock),
-  .indata(indata),
-  .intTestMode(intTestMode),
-  .numberScheme(numberScheme),
-  .filter_mode(filter_mode),
-  .demux_mode(demux_mode),
-  .falling_edge(falling_edge),
+  .clock        (sampleClock),
+  .indata       (indata),
+  .intTestMode  (intTestMode),
+  .numberScheme (numberScheme),
+  .filter_mode  (filter_mode),
+  .demux_mode   (demux_mode),
+  .falling_edge (falling_edge),
   // outputs...
-  .outdata(syncedInput));
-
+  .outdata      (syncedInput)
+);
 
 //
 // Transfer from input clock (whatever it may be) to the core clock 
 // (used for everything else, including RLE counts)...
 //
 async_fifo async_fifo(
-  .wrclk(sampleClock), .wrreset(reset_sample),
-  .rdclk(clock), .rdreset(reset_core),
-  .space_avail(), .wrenb(1'b1), .wrdata(syncedInput),
-  .read_req(1'b1), .data_avail(), 
-  .data_valid(stableValid), .data_out(stableInput));
-
+  .wrclk        (sampleClock),
+  .wrreset      (reset_sample),
+  .rdclk        (clock),
+  .rdreset      (reset_core),
+  .space_avail  (),
+  .wrenb        (1'b1),
+  .wrdata       (syncedInput),
+  .read_req     (1'b1),
+  .data_avail   (),
+  .data_valid   (stableValid),
+  .data_out     (stableInput)
+);
 
 //
 // Capture data at programmed intervals...
 //
 sampler sampler(
-  .clock(clock),
-  .extClock_mode(extClock_mode),
-  .wrDivider(wrDivider),
-  .config_data(config_data[23:0]),
-  .validIn(stableValid),
-  .dataIn(stableInput),
+  .clock         (clock),
+  .extClock_mode (extClock_mode),
+  .wrDivider     (wrDivider),
+  .config_data   (config_data[23:0]),
+  .validIn       (stableValid),
+  .dataIn        (stableInput),
   // outputs...
-  .validOut(sample_valid),
-  .dataOut(sample_data),
-  .ready50(sampleReady50));
-
+  .validOut      (sample_valid),
+  .dataOut       (sample_data),
+  .ready50       (sampleReady50)
+);
 
 //
 // Evaluate standard triggers...
 //
 trigger trigger(
-  .clock(clock),
-  .reset(reset_core),
-  .validIn(sample_valid),
-  .dataIn(sample_data),
-  .wrMask(wrtrigmask),
-  .wrValue(wrtrigval),
-  .wrConfig(wrtrigcfg),
-  .config_data(config_data),
-  .arm(arm_basic),
-  .demux_mode(demux_mode),
+  .clock        (clock),
+  .reset        (reset_core),
+  .validIn      (sample_valid),
+  .dataIn       (sample_data),
+  .wrMask       (wrtrigmask),
+  .wrValue      (wrtrigval),
+  .wrConfig     (wrtrigcfg),
+  .config_data  (config_data),
+  .arm          (arm_basic),
+  .demux_mode   (demux_mode),
   // outputs...
-  .run(run_basic),
-  .capture(capture_basic));
-
+  .run          (run_basic),
+  .capture      (capture_basic)
+);
 
 //
 // Evaluate advanced triggers...
 //
 trigger_adv trigger_adv(
-  .clock(clock),
-  .reset(reset_core),
-  .validIn(sample_valid),
-  .dataIn(sample_data),
-  .wrSelect(wrTrigSelect),
-  .wrChain(wrTrigChain),
-  .config_data(config_data),
-  .arm(arm_adv),
-  .finish_now(finish_now),
+  .clock         (clock),
+  .reset         (reset_core),
+  .validIn       (sample_valid),
+  .dataIn        (sample_data),
+  .wrSelect      (wrTrigSelect),
+  .wrChain       (wrTrigChain),
+  .config_data   (config_data),
+  .arm           (arm_adv),
+  .finish_now    (finish_now),
   // outputs...
-  .run(run_adv),
-  .capture(capture_adv));
+  .run           (run_adv),
+  .capture       (capture_adv)
+);
 
 wire capture = capture_basic || capture_adv;
-
 
 //
 // Delay samples so they're in phase with trigger "capture" outputs.
 //
-delay_fifo delay_fifo (
-  .clock(clock),
-  .validIn(sample_valid),
-  .dataIn(sample_data),
+delay_fifo #(
+  .DELAY (3) // 3 clks to match advanced trigger
+) delay_fifo (
+  .clock     (clock),
+  .validIn   (sample_valid),
+  .dataIn    (sample_data),
   // outputs
-  .validOut(dly_sample_valid),
-  .dataOut(dly_sample_data));
-defparam delay_fifo.DELAY = 3; // 3 clks to match advanced trigger
-
+  .validOut  (dly_sample_valid),
+  .dataOut   (dly_sample_data)
+);
 
 //
 // Align data so gaps from disabled groups removed...
 //
 data_align data_align (
-  .clock(clock),
-  .disabledGroups(disabledGroups),
-  .validIn(dly_sample_valid && capture),
-  .dataIn(dly_sample_data),
+  .clock           (clock),
+  .disabledGroups  (disabledGroups),
+  .validIn         (dly_sample_valid && capture),
+  .dataIn          (dly_sample_data),
   // outputs...
-  .validOut(aligned_data_valid),
-  .dataOut(aligned_data));
-
+  .validOut        (aligned_data_valid),
+  .dataOut         (aligned_data)
+);
 
 //
 // Detect duplicate data & insert RLE counts (if enabled)... 
 // Requires client software support to decode.
 //
 rle_enc rle_enc (
-  .clock(clock),
-  .reset(reset_core),
-  .enable(rleEnable),
-  .arm(arm),
-  .rle_mode(rle_mode),
-  .disabledGroups(disabledGroups),
-  .validIn(aligned_data_valid),
-  .dataIn(aligned_data),
+  .clock           (clock),
+  .reset           (reset_core),
+  .enable          (rleEnable),
+  .arm             (arm),
+  .rle_mode        (rle_mode),
+  .disabledGroups  (disabledGroups),
+  .validIn         (aligned_data_valid),
+  .dataIn          (aligned_data),
   // outputs...
-  .validOut(rle_data_valid),
-  .dataOut(rle_data));
-
+  .validOut        (rle_data_valid),
+  .dataOut         (rle_data)
+);
 
 //
 // Delay run (trigger) pulse to complensate for 
 // data_align & rle_enc delay...
 //
-pipeline_stall dly_arm_reg (
-  .clk(clock), 
-  .reset(reset_core), 
-  .datain(arm), 
-  .dataout(dly_arm));
-defparam dly_arm_reg.DELAY = 2;
+pipeline_stall #(
+  .DELAY  (2)
+) dly_arm_reg (
+  .clk     (clock), 
+  .reset   (reset_core), 
+  .datain  (arm), 
+  .dataout (dly_arm)
+);
 
-pipeline_stall dly_run_reg (
+pipeline_stall #(
+  .DELAY  (1)
+) dly_run_reg (
   .clk(clock), 
   .reset(reset_core), 
   .datain(run), 
   .dataout(dly_run));
-defparam dly_run_reg.DELAY = 1;
 
 
 //
 // The brain's...  mmm... brains...
 //
 controller controller(
-  .clock(clock),
-  .reset(reset_core),
-  .run(dly_run),
-  .wrSize(wrsize),
-  .config_data(config_data),
-  .validIn(rle_data_valid),
-  .dataIn(rle_data),
-  .arm(dly_arm),
-  .busy(outputBusy),
+  .clock           (clock),
+  .reset           (reset_core),
+  .run             (dly_run),
+  .wrSize          (wrsize),
+  .config_data     (config_data),
+  .validIn         (rle_data_valid),
+  .dataIn          (rle_data),
+  .arm             (dly_arm),
+  .busy            (outputBusy),
   // outputs...
-  .send(outputSend),
-  .memoryWrData(memoryWrData),
-  .memoryRead(memoryRead),
-  .memoryWrite(memoryWrite),
-  .memoryLastWrite(memoryLastWrite));
+  .send            (outputSend),
+  .memoryWrData    (memoryWrData),
+  .memoryRead      (memoryRead),
+  .memoryWrite     (memoryWrite),
+  .memoryLastWrite (memoryLastWrite));
 
 endmodule
 

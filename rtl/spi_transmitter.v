@@ -68,18 +68,18 @@ reg writeReset, writeByte;
 //
 // Byte select mux...   Revised for better synth. - IED
 //
-reg [7:0] byte;
+reg [7:0] dbyte;
 reg disabled;
 always @*
 begin
   #1;
-  byte = 0;
+  dbyte = 0;
   disabled = 0;
   case (bytesel)
-    2'h0 : begin byte = sampled_send_data[7:0]; disabled = !sampled_send_valid[0]; end
-    2'h1 : begin byte = sampled_send_data[15:8]; disabled = !sampled_send_valid[1]; end
-    2'h2 : begin byte = sampled_send_data[23:16]; disabled = !sampled_send_valid[2]; end
-    2'h3 : begin byte = sampled_send_data[31:24]; disabled = !sampled_send_valid[3]; end
+    2'h0 : begin dbyte = sampled_send_data[7:0]; disabled = !sampled_send_valid[0]; end
+    2'h1 : begin dbyte = sampled_send_data[15:8]; disabled = !sampled_send_valid[1]; end
+    2'h2 : begin dbyte = sampled_send_data[23:16]; disabled = !sampled_send_valid[2]; end
+    2'h3 : begin dbyte = sampled_send_data[31:24]; disabled = !sampled_send_valid[3]; end
   endcase
 end
 
@@ -90,11 +90,11 @@ end
 //
 always @(posedge clock)
 begin
-  dly_sclk = next_dly_sclk;
-  bits = next_bits;
-  byteDone = next_byteDone;
-  txBuffer = next_txBuffer;
-  tx = next_tx;
+  dly_sclk <= next_dly_sclk;
+  bits     <= next_bits;
+  byteDone <= next_byteDone;
+  txBuffer <= next_txBuffer;
+  tx       <= next_tx;
 end
 
 always @*
@@ -116,7 +116,7 @@ begin
     begin
       next_bits = 0;
       next_byteDone = disabled;
-      next_txBuffer = byte;
+      next_txBuffer = dbyte;
     end
   else if (writeMeta)
     begin
@@ -149,24 +149,19 @@ parameter [1:0] INIT = 0, IDLE = 1, SEND = 2, POLL = 3;
 reg [1:0] state, next_state;
 
 initial state = INIT;
-always @(posedge clock or posedge extReset) 
-begin
-  if (extReset) 
-    begin
-      state = INIT;
-      sampled_send_data = 32'h0;
-      sampled_send_valid = 4'h0;
-      bytesel = 3'h0;
-      busy = 1'b0;
-    end 
-  else 
-    begin
-      state = next_state;
-      sampled_send_data = next_sampled_send_data;
-      sampled_send_valid = next_sampled_send_valid;
-      bytesel = next_bytesel;
-      busy = next_busy;
-    end
+always @(posedge clock, posedge extReset) 
+if (extReset) begin
+  state              <= INIT;
+  sampled_send_data  <= 32'h0;
+  sampled_send_valid <= 4'h0;
+  bytesel            <= 3'h0;
+  busy               <= 1'b0;
+end else begin
+  state              <= next_state;
+  sampled_send_data  <= next_sampled_send_data;
+  sampled_send_valid <= next_sampled_send_valid;
+  bytesel            <= next_bytesel;
+  busy               <= next_busy;
 end
 
 always @*

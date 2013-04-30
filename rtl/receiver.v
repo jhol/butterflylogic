@@ -36,23 +36,21 @@
 
 `timescale 1ns/100ps
 
-module receiver(
-  clock, trxClock, reset, rx,
-  // outputs...
-  op, data, execute);
+module receiver #(
+  parameter [31:0] FREQ = 100000000,
+  parameter [31:0] RATE = 115200,
+  parameter BITLENGTH = FREQ / RATE  // 100M / 115200 ~= 868
+)(
+  input  wire        clock,
+  input  wire        trxClock,
+  input  wire        reset,
+  input  wire        rx,
+  output wire  [7:0] op,
+  output wire [31:0] data,
+  output reg         execute
+);
 
-parameter [31:0] FREQ = 100000000;
-parameter [31:0] RATE = 115200;
-
-input clock;
-input trxClock;
-input reset;
-input rx;
-output [7:0] op;
-output [31:0] data;
-output execute;
-
-parameter [2:0]
+localparam [2:0]
   INIT =      3'h0,
   WAITSTOP =  3'h1,
   WAITSTART = 3'h2,
@@ -61,19 +59,18 @@ parameter [2:0]
   ANALYZE =   3'h5,
   READY =     3'h6;
 
-parameter BITLENGTH = FREQ / RATE;  // 100M / 115200 ~= 868
 reg [9:0] counter, next_counter;  // clock prescaling counter
 reg [3:0] bitcount, next_bitcount;  // count rxed bits of current byte
 reg [2:0] bytecount, next_bytecount;  // count rxed bytes of current command
 reg [2:0] state, next_state;  // receiver state
 reg [7:0] opcode, next_opcode;  // opcode byte
 reg [31:0] databuf, next_databuf;  // data dword
-reg execute, next_execute;
+reg next_execute;
 
 assign op = opcode;
 assign data = databuf;
 
-always @(posedge clock or posedge reset) 
+always @(posedge clock, posedge reset) 
 begin
   if (reset)
     state = INIT;

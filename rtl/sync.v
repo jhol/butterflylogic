@@ -34,17 +34,16 @@
 
 `timescale 1ns/100ps
 
-module sync (clock, indata, intTestMode, numberScheme, filter_mode, demux_mode, falling_edge, outdata);
-
-input clock;
-input [31:0] indata;
-input intTestMode;
-input numberScheme;
-input filter_mode;
-input demux_mode;
-input falling_edge;
-output [31:0] outdata;
-
+module sync (
+  input  wire        clock,
+  input  wire [31:0] indata,
+  input  wire        intTestMode,
+  input  wire        numberScheme,
+  input  wire        filter_mode,
+  input  wire        demux_mode,
+  input  wire        falling_edge,
+  output wire [31:0] outdata
+);
 
 //
 // Sample config flags (for better synthesis)...
@@ -52,14 +51,11 @@ output [31:0] outdata;
 dly_signal sampled_intTestMode_reg (clock, intTestMode, sampled_intTestMode);
 dly_signal sampled_numberScheme_reg (clock, numberScheme, sampled_numberScheme);
 
-
 //
 // Synchronize indata guarantees use of iob ff on spartan 3 (as filter and demux do)
 //
 wire [31:0] sync_indata, sync_indata180;
 ddr_inbuf inbuf (clock, indata, sync_indata, sync_indata180);
- 
-
 
 //
 // Internal test mode.  Put aa 8-bit test pattern munged in 
@@ -100,43 +96,43 @@ wire [31:0] itm_indata180 = (sampled_intTestMode) ? ~itm_count : sync_indata180;
 //
 wire [31:0] demuxL_indata; 
 demux demuxL (
-  .clock(clock),
-  .indata(itm_indata[15:0]), 
-  .indata180(itm_indata180[15:0]), 
-  .outdata(demuxL_indata));
+  .clock     (clock),
+  .indata    (itm_indata[15:0]), 
+  .indata180 (itm_indata180[15:0]), 
+  .outdata   (demuxL_indata)
+);
 
 wire [31:0] demuxH_indata; 
 demux demuxH (
-  .clock(clock),
-  .indata(itm_indata[31:16]), 
-  .indata180(itm_indata180[31:16]), 
-  .outdata(demuxH_indata));
+  .clock     (clock),
+  .indata    (itm_indata[31:16]), 
+  .indata180 (itm_indata180[31:16]), 
+  .outdata   (demuxH_indata)
+);
 
 wire [31:0] demux_indata = (sampled_numberScheme) ? {demuxH_indata[15:0],demuxH_indata[31:16]} : demuxL_indata;
-
 
 //
 // Instantiate noise filter...
 //
 wire [31:0] filtered_indata; 
 filter filter (
-  .clock(clock), 
-  .indata(itm_indata),
-  .indata180(itm_indata180),
-  .outdata(filtered_indata));
-
+  .clock     (clock), 
+  .indata    (itm_indata),
+  .indata180 (itm_indata180),
+  .outdata   (filtered_indata)
+);
 
 //
 // Another pipeline step for indata selector to not decrease maximum clock rate...
 //
 reg [1:0] select, next_select;
 reg [31:0] selectdata, next_selectdata;
-reg [31:0] outdata;
 
 always @(posedge clock) 
 begin
-  select = next_select;
-  selectdata = next_selectdata;
+  select     <= next_select;
+  selectdata <= next_selectdata;
 end
 
 always @*
@@ -156,10 +152,11 @@ begin
     2'b11 : next_selectdata = filtered_indata;
   endcase
 
-  //
-  // Apply number scheme.  ie: swap upper/lower 16 bits as desired...
-  //
-  outdata = (sampled_numberScheme) ? {selectdata[15:0],selectdata[31:16]} : selectdata;
 end
-endmodule
 
+//
+// Apply number scheme.  ie: swap upper/lower 16 bits as desired...
+//
+assign outdata = (sampled_numberScheme) ? {selectdata[15:0],selectdata[31:16]} : selectdata;
+
+endmodule

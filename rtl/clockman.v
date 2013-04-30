@@ -17,15 +17,13 @@
 
 `timescale 1ns/100ps
 
-module pll_wrapper (clkin, clk0);
-input clkin; // clock input
-output clk0; // double clock rate output
+module pll_wrapper (
+  input  wire clkin, // clock input
+  output wire clk0   // double clock rate output
+);
 
-parameter TRUE = 1'b1;
-parameter FALSE = 1'b0;
-
-wire clkin;
-wire clk0;
+localparam TRUE  = 1'b1;
+localparam FALSE = 1'b0;
 
 wire clkfb; 
 wire clkfbbuf; 

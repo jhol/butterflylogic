@@ -27,18 +27,21 @@
 //--------------------------------------------------------------------------------
 
 `timescale 1ns/100ps
-module prescaler (clock, reset, div, scaled);
-parameter [31:0] SCALE = 28;
+module prescaler #(
+  parameter [31:0] SCALE = 28
+)(
+  input  wire       clock;
+  input  wire       reset;
+  input  wire [1:0] div;
+  output reg        scaled;
+);
 
-input clock;
-input reset;
-input [1:0] div;
-output scaled;
-wire scaled = 1'b1;
+always @ (*)
+scaled = 1'b1;
 
 /*
 reg [31:0] counter, next_counter;
-reg scaled, next_scaled;
+reg next_scaled;
 
 always @(posedge clock or posedge reset) 
 begin

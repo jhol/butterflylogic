@@ -41,32 +41,26 @@
 `timescale 1ns/100ps
 
 module sampler (
-  clock, extClock_mode, 
-  wrDivider, config_data, 
-  validIn, dataIn, 
-  // outputs
-  validOut, dataOut, ready50);
+  input  wire        clock, 		// internal clock
+  input  wire        extClock_mode,	// clock selection
+  input  wire        wrDivider, 	// write divider register
+  input  wire [23:0] config_data, 	// configuration data
+  input  wire        validIn,		// dataIn is valid
+  input  wire [31:0] dataIn, 		// 32 input channels
+  output reg         validOut, 		// new sample ready
+  output reg  [31:0] dataOut, 		// sampled data
+  output reg         ready50
+);
 
-input clock; 			// internal clock
-input extClock_mode;		// clock selection
-input wrDivider; 		// write divider register
-input [23:0] config_data; 	// configuration data
-input validIn;			// dataIn is valid
-input [31:0] dataIn; 		// 32 input channels
-output validOut; 		// new sample ready
-output [31:0] dataOut; 		// sampled data
-output ready50;
-
-parameter TRUE = 1'b1;
-parameter FALSE = 1'b0;
+localparam TRUE = 1'b1;
+localparam FALSE = 1'b0;
 
 
 //
 // Registers...
 //
-reg validOut, next_validOut;
-reg [31:0] dataOut, next_dataOut;
-reg ready50, next_ready50; // low rate sample signal with 50% duty cycle
+reg next_validOut;
+reg [31:0] next_dataOut;
 
 reg [23:0] divider, next_divider; 
 reg [23:0] counter, next_counter;	// Made counter decrementing.  Better synth.
@@ -85,10 +79,10 @@ begin
 end
 always @ (posedge clock) 
 begin
-  divider = next_divider;
-  counter = next_counter;
-  validOut = next_validOut;
-  dataOut = next_dataOut;
+  divider  <= next_divider;
+  counter  <= next_counter;
+  validOut <= next_validOut;
+  dataOut  <= next_dataOut;
 end
 
 always @*
@@ -131,19 +125,12 @@ end
 //
 always @(posedge clock) 
 begin
-  ready50 = next_ready50;
-end
-
-always @*
-begin
-  #1;
-  next_ready50 = ready50;
   if (wrDivider)
-    next_ready50 = FALSE; // reset
+    ready50 <= FALSE; // reset
   else if (counter_zero)
-    next_ready50 = TRUE;
+    ready50 <= TRUE;
   else if (counter == divider[23:1])
-    next_ready50 = FALSE;
+    ready50 <= FALSE;
 end
-endmodule
 
+endmodule

@@ -29,21 +29,16 @@
 `timescale 1ns/100ps
 
 module meta_handler(
-  clock, extReset,
-  query_metadata, xmit_idle, 
+  input  wire       clock,
+  input  wire       extReset,
+  input  wire       query_metadata,
+  input  wire       xmit_idle,
   // outputs...
-  writeMeta, meta_data);
-
-input clock;
-input extReset;
-input query_metadata;
-input xmit_idle;
-
-output writeMeta;
-output [7:0] meta_data;
+  output reg        writeMeta,
+  output wire [7:0] meta_data
+);
 
 reg [5:0] metasel, next_metasel;
-reg writeMeta; 
 
 `define ADDBYTE(cmd) meta_rom[i]=cmd; i=i+1
 `define ADDSHORT(cmd,b0) meta_rom[i]=cmd; meta_rom[i+1]=b0; i=i+2
@@ -53,7 +48,7 @@ reg writeMeta;
 // Create meta data ROM...
 reg [5:0] METADATA_LEN;
 reg [7:0] meta_rom[63:0];
-wire [7:0] meta_data = meta_rom[metasel];
+assign meta_data = meta_rom[metasel];
 initial
 begin : meta
   integer i;
@@ -91,18 +86,13 @@ parameter [1:0] IDLE = 0, METASEND = 1, METAPOLL = 2;
 reg [1:0] state, next_state;
 
 initial state = IDLE;
-always @(posedge clock or posedge extReset) 
-begin
-  if (extReset) 
-    begin
-      state = IDLE;
-      metasel = 3'h0;
-    end 
-  else 
-    begin
-      state = next_state;
-      metasel = next_metasel;
-    end
+always @(posedge clock, posedge extReset) 
+if (extReset) begin
+  state   <= IDLE;
+  metasel <= 3'h0;
+end else begin
+  state   <= next_state;
+  metasel <= next_metasel;
 end
 
 always @*
@@ -135,5 +125,5 @@ begin
     default : next_state = IDLE;
   endcase
 end
-endmodule
 
+endmodule

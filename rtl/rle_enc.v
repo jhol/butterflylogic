@@ -38,54 +38,53 @@
 //    1 : Always.  <value>'s reissued after every <rle-count> field.
 //    2 : Periodic.  <value>'s reissued approx every 256 <rle-count> fields.
 //    3 : Unlimited.  <value>'s can be followed by unlimited numbers of <rle-count> fields.
-
 // 
+
 `timescale 1ns/100ps
 
-module rle_enc(
-  clock, reset, 
-  enable, arm, 
-  rle_mode, disabledGroups, 
-  dataIn, validIn, 
-  // outputs...
-  dataOut, validOut);
-
-input clock, reset;
-input enable, arm;
-input [1:0] rle_mode;
-input [3:0] disabledGroups;
-input [31:0] dataIn;
-input validIn;
-output [31:0] dataOut;
-output validOut;
+module rle_enc (
+  // system signals
+  input  wire        clock,
+  input  wire        reset,
+  // configuration/control signals
+  input  wire        enable,
+  input  wire        arm,
+  input  wire  [1:0] rle_mode,
+  input  wire  [3:0] disabledGroups,
+  // input stream
+  input  wire [31:0] dataIn,
+  input  wire        validIn,
+  // output stream
+  output reg  [31:0] dataOut,
+  output reg         validOut = 0
+);
 
 localparam TRUE = 1'b1;
 localparam FALSE = 1'b0;
 localparam RLE_COUNT = 1'b1;
 
-
 //
 // Registers...
 //
-reg active, next_active;
-reg mask_flag, next_mask_flag;
-reg [1:0] mode, next_mode;
-reg [30:0] data_mask, next_data_mask;
-reg [30:0] last_data, next_last_data;
-reg last_valid, next_last_valid;
-reg [31:0] dataOut, next_dataOut;
-reg validOut, next_validOut;
+reg         active = 0, next_active;
+reg         mask_flag = 0, next_mask_flag;
+reg   [1:0] mode;
+reg  [30:0] data_mask;
+reg  [30:0] last_data, next_last_data;
+reg         last_valid = 0, next_last_valid;
+reg  [31:0] next_dataOut;
+reg         next_validOut;
 
-reg [30:0] count, next_count;		// # of times seen same input data
-reg [8:0] fieldcount, next_fieldcount;	// # times output back-to-back <rle-counts> with no <value>
-reg [1:0] track, next_track;		// Track if at start of rle-coutn sequence.
+reg  [30:0] count = 0, next_count;		// # of times seen same input data
+reg   [8:0] fieldcount = 0, next_fieldcount;	// # times output back-to-back <rle-counts> with no <value>
+reg   [1:0] track = 0, next_track;		// Track if at start of rle-coutn sequence.
 
 wire [30:0] inc_count = count+1'b1;
-wire count_zero = ~|count;
-wire count_gt_one = track[1];
-wire count_full = (count==data_mask);
+wire        count_zero = ~|count;
+wire        count_gt_one = track[1];
+wire        count_full = (count==data_mask);
 
-reg mismatch;
+reg         mismatch;
 
 wire [30:0] masked_dataIn = dataIn & data_mask;
 
@@ -95,62 +94,54 @@ wire [30:0] masked_dataIn = dataIn & data_mask;
 //   When disabled (repitition mode), the count is exclusive.
 wire rle_repeat_mode = 0; // (rle_mode==0);  // Disabled - modes 0 & 1 now identical
 
-
 //
 // Figure out what mode we're in (8/16/24 or 32 bit)...
 //
 always @ (posedge clock)
 begin
-  mode = next_mode;
-  data_mask = next_data_mask;
-end
-always @*
-begin
-  next_mode = 2'h3; // 24 or 32-bit
   case (disabledGroups)
-    4'b1110,4'b1101,4'b1011,4'b0111 : next_mode = 2'h0; // 8-bit
-    4'b1100,4'b1010,4'b0110,4'b1001,4'b0101,4'b0011 : next_mode = 2'h1; // 16-bit
-    4'b1000,4'b0100,4'b0010,4'b0001 : next_mode = 2'h2; // 24-bit
+    4'b1110,4'b1101,4'b1011,4'b0111                 : mode = 2'h0; // 8-bit
+    4'b1100,4'b1010,4'b0110,4'b1001,4'b0101,4'b0011 : mode = 2'h1; // 16-bit
+    4'b1000,4'b0100,4'b0010,4'b0001                 : mode = 2'h2; // 24-bit
+    default                                         : mode = 2'h3; // 24 or 32-bit
   endcase
 
   // Mask to strip off disabled groups.  Data must have already been
   // aligned (see data_align.v)...
-  next_data_mask = 32'h7FFFFFFF;
   case (mode)
-    2'h0 : next_data_mask = 32'h0000007F;
-    2'h1 : next_data_mask = 32'h00007FFF;
-    2'h2 : next_data_mask = 32'h007FFFFF;
+    2'h0    : data_mask = 32'h0000007F;
+    2'h1    : data_mask = 32'h00007FFF;
+    2'h2    : data_mask = 32'h007FFFFF;
+    default : data_mask = 32'h7FFFFFFF;
   endcase
 end
-
 
 //
 // Control Logic...
 //
-initial begin active=0; mask_flag=0; count=0; fieldcount=0; track=0; validOut=0; last_valid=0; end
-always @ (posedge clock or posedge reset)
+always @ (posedge clock, posedge reset)
 begin
   if (reset)
     begin
-      active = 0;
-      mask_flag = 0;
+      active    <= 0;
+      mask_flag <= 0;
     end
   else 
     begin
-      active = next_active;
-      mask_flag = next_mask_flag;
+      active    <= next_active;
+      mask_flag <= next_mask_flag;
     end
 end
 
 always @ (posedge clock)
 begin
-  count = next_count;
-  fieldcount = next_fieldcount;
-  track = next_track;
-  dataOut = next_dataOut;
-  validOut = next_validOut;
-  last_data = next_last_data;
-  last_valid = next_last_valid;
+  count      <= next_count;
+  fieldcount <= next_fieldcount;
+  track      <= next_track;
+  dataOut    <= next_dataOut;
+  validOut   <= next_validOut;
+  last_data  <= next_last_data;
+  last_valid <= next_last_valid;
 end
 
 always @*
@@ -206,5 +197,5 @@ begin
 	  end
     end
 end
-endmodule
 
+endmodule

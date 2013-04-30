@@ -80,17 +80,14 @@ wire cs_negedge = dly_cs && !cs;
 // Accumulate byte from serial input...
 //
 initial bitcount = 0;
-always @(posedge clock or posedge extReset)
-begin
-  if (extReset)
-    bitcount = 0;
-  else bitcount = next_bitcount;
-end
+always @(posedge clock, posedge extReset)
+if (extReset) bitcount <= 0;
+else          bitcount <= next_bitcount;
 
 always @(posedge clock)
 begin
-  spiByte = next_spiByte;
-  byteready = next_byteready;
+  spiByte   <= next_spiByte;
+  byteready <= next_byteready;
 end
 
 always @*
@@ -123,20 +120,17 @@ end
 // Command tracking...
 //
 initial state = READOPCODE;
-always @(posedge clock or posedge extReset) 
-begin
-  if (extReset)
-    state = READOPCODE;
-  else state = next_state;
-end
+always @(posedge clock, posedge extReset) 
+if (extReset)  state <= READOPCODE;
+else           state <= next_state;
 
 initial databuf = 0;
 always @(posedge clock) 
 begin
-  bytecount = next_bytecount;
-  opcode = next_opcode;
-  databuf = next_databuf;
-  execute = next_execute;
+  bytecount <= next_bytecount;
+  opcode    <= next_opcode;
+  databuf   <= next_databuf;
+  execute   <= next_execute;
 end
 
 always @*

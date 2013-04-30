@@ -134,21 +134,21 @@
 `timescale 1ns/100ps
 
 module trigger_adv (
-  clock, reset, 
-  dataIn, validIn, arm, finish_now,
-  wrSelect, wrChain, config_data,
-  // outputs...
-  run, capture);
+  // system signals
+  input  wire       clock,
+  input  wire       reset,
+  // input stream
+  input  wire       validIn,
+  input  wire[31:0] dataIn,		// Channel data...
+  // configuration/control signals
+  input  wire       arm,
+  input  wire       finish_now,
 
-input clock, reset;
-input validIn;
-input [31:0] dataIn;		// Channel data...
-input arm, finish_now;
-input wrSelect,wrChain;
-input [31:0] config_data;
-output run;			// Full capture
-output capture;			// Single capture
-
+  input wire        wrSelect,wrChain,
+  input wire [31:0] config_data,
+  output reg        run,			// Full capture
+  output reg        capture			// Single capture
+);
 
 //
 // Registers...
@@ -163,8 +163,8 @@ reg finished, next_finished;
 reg force_capture, next_force_capture;
 reg [3:0] state, next_state;
 reg [19:0] hit_count, next_hit_count;
-reg run, next_run;
-reg capture, next_capture;
+reg next_run;
+reg next_capture;
 
 wire last_state = &state;
 
@@ -185,10 +185,10 @@ end
 
 always @ (posedge clock)
 begin
-  wrcount = next_wrcount;
-  wraddr = next_wraddr;
-  wrdata = next_wrdata;
-  wrenb = next_wrenb;
+  wrcount <= next_wrcount;
+  wraddr  <= next_wraddr;
+  wrdata  <= next_wrdata;
+  wrenb   <= next_wrenb;
 end
 
 always @*
@@ -306,13 +306,13 @@ end
 
 always @ (posedge clock)
 begin
-  active = next_active;
-  finished = next_finished;
-  force_capture = next_force_capture;
-  state = next_state;
-  hit_count = next_hit_count;
-  run = next_run;
-  capture = next_capture;
+  active        <= next_active;
+  finished      <= next_finished;
+  force_capture <= next_force_capture;
+  state         <= next_state;
+  hit_count     <= next_hit_count;
+  run           <= next_run;
+  capture       <= next_capture;
 end
 
 always @*
@@ -376,15 +376,17 @@ endmodule
 //
 // Mask & compare all 32 bits of input data, for eight trigger terms, in all possible 16 trigger states...
 //
-module trigterms (clock, dataIn, timer1_hit, timer2_hit, wrenb, wraddr, din, state, hit);
-input clock;
-input [31:0] dataIn;
-input timer1_hit, timer2_hit;
-input wrenb;
-input [6:0] wraddr;
-input din;
-input [3:0] state;	// Current trigger state
-output [2:0] hit;	// Hits matching trigger state summing-terms
+module trigterms (
+  input  wire        clock,
+  input  wire [31:0] dataIn,
+  input  wire        timer1_hit,
+  input  wire        timer2_hit,
+  input  wire        wrenb,
+  input  wire  [6:0] wraddr,
+  input  wire        din,
+  input  wire  [3:0] state,	// Current trigger state
+  output wire  [2:0] hit	// Hits matching trigger state summing-terms
+);
 
 reg [15:0] wrenb_term;
 reg [7:0] wrenb_range_edge;
@@ -488,7 +490,7 @@ trigstate stateD (use_term_hits, clock, wrenb_state[13], wraddr[1:0], din, state
 trigstate stateE (use_term_hits, clock, wrenb_state[14], wraddr[1:0], din, state_hit[14]);
 trigstate stateF (use_term_hits, clock, wrenb_state[15], wraddr[1:0], din, state_hit[15]);
 
-wire [2:0] hit = state_hit[state];
+assign hit = state_hit[state];
 
 endmodule
 
@@ -504,13 +506,14 @@ endmodule
 //   Three 256 bit chains for trigterm_64bit's
 //   One 240 bit chain for ax/ay & ab sum-terms: 64+64+64+16+16+!6
 //
-module trigstate (term_hits, clock, wrenb, wraddr, din, hit);
-input [31:0] term_hits;
-input clock;
-input wrenb;
-input [1:0] wraddr;
-input din;
-output [2:0] hit;
+module trigstate (
+  input  wire [31:0] term_hits,
+  input  wire        clock,
+  input  wire        wrenb,
+  input  wire  [1:0] wraddr,
+  input  wire        din,
+  output reg   [2:0] hit
+);
 
 reg [3:0] wrenb_sum;
 always @*
@@ -524,8 +527,8 @@ trigsum else_sum (term_hits, clock, wrenb_sum[1], din, else_term);
 trigsum capture_sum (term_hits, clock, wrenb_sum[2], din, capture_term);
 
 // Sample output of hits...
-reg [2:0] hit, next_hit;
-always @ (posedge clock) hit = next_hit;
+reg [2:0] next_hit;
+always @ (posedge clock) hit <= next_hit;
 always @* next_hit = {capture_term, else_term, hit_term};
 
 endmodule
@@ -535,53 +538,58 @@ endmodule
 // Sum trigger terms for one of the hit/else/capture state terms...
 // 176 bit serial cfg chain (22 bytes)...
 //
-module trigsum (term_hits, clock, wrenb, din, hit);
-input [31:0] term_hits;
-input clock,wrenb,din;
-output hit;
+module trigsum (
+  input  wire [31:0] term_hits,
+  input  wire        clock,
+  input  wire        wrenb,
+  input  wire        din,
+  output wire        hit
+);
 wire [7:0] pair_sum;
 trigterm_32bit pair (term_hits, clock, wrenb, din, dout_pair, pair_sum);
-trigterm_4bit mid0 (pair_sum[3:0], clock, wrenb, dout_pair, dout_mid0, mid0_sum);
-trigterm_4bit mid1 (pair_sum[7:4], clock, wrenb, dout_mid0, dout_mid1, mid1_sum);
-trigterm_4bit final ({2'h0,mid1_sum,mid0_sum}, clock, wrenb, dout_mid1, dout_final, hit);
+trigterm_4bit mid0  (pair_sum[3:0]           , clock, wrenb, dout_pair, dout_mid0, mid0_sum);
+trigterm_4bit mid1  (pair_sum[7:4]           , clock, wrenb, dout_mid0, dout_mid1, mid1_sum);
+trigterm_4bit fin   ({2'h0,mid1_sum,mid0_sum}, clock, wrenb, dout_mid1, dout_final, hit);
 endmodule
-
 
 //
 // Mask & compare 32 bits of input data for a trigger term.
 // 128 bit serial cfg chain (16 bytes)...
 //
-module trigterm_32bit (dataIn, clock, wrenb, din, dout, hit);
-input [31:0] dataIn;
-input clock, wrenb, din;
-output dout;
-output [7:0] hit;
-trigterm_4bit nyb0 (dataIn[3:0], clock, wrenb, din, n0, hit[0]);
-trigterm_4bit nyb1 (dataIn[7:4], clock, wrenb, n0, n1, hit[1]);
-trigterm_4bit nyb2 (dataIn[11:8], clock, wrenb, n1, n2, hit[2]);
-trigterm_4bit nyb3 (dataIn[15:12], clock, wrenb, n2, n3, hit[3]);
-trigterm_4bit nyb4 (dataIn[19:16], clock, wrenb, n3, n4, hit[4]);
-trigterm_4bit nyb5 (dataIn[23:20], clock, wrenb, n4, n5, hit[5]);
-trigterm_4bit nyb6 (dataIn[27:24], clock, wrenb, n5, n6, hit[6]);
-trigterm_4bit nyb7 (dataIn[31:28], clock, wrenb, n6, dout, hit[7]);
+module trigterm_32bit (
+  input  wire [31:0] dataIn,
+  input  wire        clock,
+  input  wire        wrenb,
+  input  wire        din,
+  output wire        dout,
+  output wire  [7:0] hit
+);
+trigterm_4bit nyb0 (dataIn[ 3: 0], clock, wrenb, din,   n0, hit[0]);
+trigterm_4bit nyb1 (dataIn[ 7: 4], clock, wrenb,  n0,   n1, hit[1]);
+trigterm_4bit nyb2 (dataIn[11: 8], clock, wrenb,  n1,   n2, hit[2]);
+trigterm_4bit nyb3 (dataIn[15:12], clock, wrenb,  n2,   n3, hit[3]);
+trigterm_4bit nyb4 (dataIn[19:16], clock, wrenb,  n3,   n4, hit[4]);
+trigterm_4bit nyb5 (dataIn[23:20], clock, wrenb,  n4,   n5, hit[5]);
+trigterm_4bit nyb6 (dataIn[27:24], clock, wrenb,  n5,   n6, hit[6]);
+trigterm_4bit nyb7 (dataIn[31:28], clock, wrenb,  n6, dout, hit[7]);
 endmodule
-
 
 //
 // Mask & compare 4 bits of input data.  
 // 16 bit serial cfg chain.
 //
-module trigterm_4bit (addr, clock, wrenb, din, dout, hit);
-input [3:0] addr;
-input clock, wrenb, din;
-output dout, hit;
+module trigterm_4bit (
+  input  wire  [3:0] addr,
+  input  wire        clock,
+  input  wire        wrenb,
+  input  wire        din,
+  output wire        dout,
+  output wire        hit
+);
 SRLC16E ram (
   .A0(addr[0]), .A1(addr[1]), .A2(addr[2]), .A3(addr[3]), 
   .CLK(clock), .CE(wrenb), .D(din), .Q15(dout), .Q(hit));
 endmodule
-
-
-
 
 //
 // A LUT chain for performing magnitude comparisons.  Uses fast-carry
@@ -589,38 +597,51 @@ endmodule
 // being added is encoded directly into the LUT RAM's.
 // 512 bits.
 //
-module trigterm_range (dataIn, clock, wrenb, din, hit);
-input [31:0] dataIn;
-input clock, wrenb, din;
-output hit;
-trigterm_range_byte byte0 (dataIn[7:0], clock, wrenb, din, dout0, 1'b1, cout0);
-trigterm_range_byte byte1 (dataIn[15:8], clock, wrenb, dout0, dout1, cout0, cout1);
+module trigterm_range (
+  input  wire [31:0] dataIn,
+  input  wire        clock,
+  input  wire        wrenb,
+  input  wire        din,
+  output wire        hit
+);
+trigterm_range_byte byte0 (dataIn[ 7: 0], clock, wrenb,   din, dout0,  1'b1, cout0);
+trigterm_range_byte byte1 (dataIn[15: 8], clock, wrenb, dout0, dout1, cout0, cout1);
 trigterm_range_byte byte2 (dataIn[23:16], clock, wrenb, dout1, dout2, cout1, cout2);
-trigterm_range_byte byte3 (dataIn[31:24], clock, wrenb, dout2, dout, cout2, hit);
+trigterm_range_byte byte3 (dataIn[31:24], clock, wrenb, dout2,  dout, cout2,   hit);
 endmodule
 
 
 // 128 bits
-module trigterm_range_byte (dataIn, clock, wrenb, din, dout, cin, cout);
-input [7:0] dataIn;
-input clock, wrenb, din, cin;
-output dout, cout;
+module trigterm_range_byte (
+  input  wire  [7:0] dataIn,
+  input  wire        clock,
+  input  wire        wrenb,
+  input  wire        din,
+  output wire        dout,
+  input  wire        cin,
+  output wire        cout
+);
 wire [6:0] chain, carry;
-trigterm_range_bit bit0 (dataIn[0], clock, wrenb, din, chain[0], cin, carry[0]);
+trigterm_range_bit bit0 (dataIn[0], clock, wrenb,      din, chain[0],      cin, carry[0]);
 trigterm_range_bit bit1 (dataIn[1], clock, wrenb, chain[0], chain[1], carry[0], carry[1]);
 trigterm_range_bit bit2 (dataIn[2], clock, wrenb, chain[1], chain[2], carry[1], carry[2]);
 trigterm_range_bit bit3 (dataIn[3], clock, wrenb, chain[2], chain[3], carry[2], carry[3]);
 trigterm_range_bit bit4 (dataIn[4], clock, wrenb, chain[3], chain[4], carry[3], carry[4]);
 trigterm_range_bit bit5 (dataIn[5], clock, wrenb, chain[4], chain[5], carry[4], carry[5]);
 trigterm_range_bit bit6 (dataIn[6], clock, wrenb, chain[5], chain[6], carry[5], carry[6]);
-trigterm_range_bit bit7 (dataIn[7], clock, wrenb, chain[6], dout, carry[6], cout);
+trigterm_range_bit bit7 (dataIn[7], clock, wrenb, chain[6],     dout, carry[6],     cout);
 endmodule
 
 
-module trigterm_range_bit (dataIn, clock, wrenb, din, dout, cin, cout);
-input dataIn;
-input clock, wrenb, din, cin;
-output dout, cout;
+module trigterm_range_bit (
+  input  wire dataIn,
+  input  wire clock,
+  input  wire wrenb,
+  input  wire din,
+  output wire dout,
+  input  wire cin,
+  output wire cout
+);
 SRLC16E ram0 (
   .A0(dataIn), .A1(1'b0), .A2(1'b0), .A3(1'b0), 
   .CLK(clock), .CE(wrenb), .D(din), .Q15(dout), .Q(hit));
@@ -635,10 +656,14 @@ endmodule
 // A LUT chain for detecting edges...
 // 256 bits
 //
-module trigterm_edge (dataIn, dly_dataIn, clock, wrenb, din, hit);
-input [31:0] dataIn, dly_dataIn;
-input clock, wrenb, din;
-output hit;
+module trigterm_edge (
+  input  wire [31:0] dataIn,
+  input  wire [31:0] dly_dataIn,
+  input  wire        clock,
+  input  wire        wrenb,
+  input  wire        din,
+  output wire        hit
+);
 
 wire [63:0] use_dataIn = {
   dly_dataIn[31:30], dataIn[31:30],
@@ -652,15 +677,15 @@ wire [63:0] use_dataIn = {
   dly_dataIn[15:14], dataIn[15:14],
   dly_dataIn[13:12], dataIn[13:12],
   dly_dataIn[11:10], dataIn[11:10],
-  dly_dataIn[9:8], dataIn[9:8],
-  dly_dataIn[7:6], dataIn[7:6],
-  dly_dataIn[5:4], dataIn[5:4],
-  dly_dataIn[3:2], dataIn[3:2],
-  dly_dataIn[1:0], dataIn[1:0]};
+  dly_dataIn[ 9: 8], dataIn[ 9: 8],
+  dly_dataIn[ 7: 6], dataIn[ 7: 6],
+  dly_dataIn[ 5: 4], dataIn[ 5: 4],
+  dly_dataIn[ 3: 2], dataIn[ 3: 2],
+  dly_dataIn[ 1: 0], dataIn[ 1: 0]};
 
 wire [7:0] lohit, hihit;
-trigterm_32bit loword (use_dataIn[31:0], clock, wrenb, din, doutlo, lohit);
-trigterm_32bit hiword (use_dataIn[63:32], clock, wrenb, doutlo, dout, hihit);
+trigterm_32bit loword (use_dataIn[31: 0], clock, wrenb,    din, doutlo, lohit);
+trigterm_32bit hiword (use_dataIn[63:32], clock, wrenb, doutlo,   dout, hihit);
 assign hit = |{hihit,lohit};
 
 endmodule
@@ -670,33 +695,22 @@ endmodule
 //
 // RAM for storing FSM state info...
 //
-module ram_dword (clock, addr, wrenb, wrdata, rddata);
-input clock;
-input [3:0] addr;
-input wrenb;
-input [31:0] wrdata;
-output [31:0] rddata;
-ram_byte byte0 (clock, addr, wrenb, wrdata[7:0], rddata[7:0]);
-ram_byte byte1 (clock, addr, wrenb, wrdata[15:8], rddata[15:8]);
-ram_byte byte2 (clock, addr, wrenb, wrdata[23:16], rddata[23:16]);
-ram_byte byte3 (clock, addr, wrenb, wrdata[31:24], rddata[31:24]);
+module ram_dword (
+  input  wire        clock,
+  input  wire  [3:0] addr,
+  input  wire        wrenb,
+  input  wire [31:0] wrdata,
+  output reg  [31:0] rddata
+);
+
+reg [31:0] mem [0:15];
+
+// write memory
+always @ (posedge clock)
+if (wrenb) mem[addr] <= wrdata;
+
+// read memory
+always @ (posedge clock)
+rddata <= mem[addr];
+
 endmodule
-
-
-module ram_byte (clock, addr, wrenb, wrdata, rddata);
-input clock;
-input [3:0] addr;
-input wrenb;
-input [7:0] wrdata;
-output [7:0] rddata;
-RAM16X4S ram0 (
-  .A0(addr[0]), .A1(addr[1]), .A2(addr[2]), .A3(addr[3]), .WCLK(clock), .WE(wrenb), 
-  .D0(wrdata[0]), .D1(wrdata[1]), .D2(wrdata[2]), .D3(wrdata[3]),
-  .O0(rddata[0]), .O1(rddata[1]), .O2(rddata[2]), .O3(rddata[3]));
-RAM16X4S ram1 (
-  .A0(addr[0]), .A1(addr[1]), .A2(addr[2]), .A3(addr[3]), .WCLK(clock), .WE(wrenb), 
-  .D0(wrdata[4]), .D1(wrdata[5]), .D2(wrdata[6]), .D3(wrdata[7]),
-  .O0(rddata[4]), .O1(rddata[5]), .O2(rddata[6]), .O3(rddata[7]));
-endmodule
-
-

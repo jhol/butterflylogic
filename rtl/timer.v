@@ -31,20 +31,22 @@
 `timescale 1ns/100ps
 
 module timer (
-  clk, reset, wrenb, wraddr, config_data, 
-  update_timers, fsm_start_timer, fsm_clear_timer, fsm_stop_timer,
-  timer_elapsed);
-input clk, reset;
-input wrenb, wraddr;
-input [31:0] config_data;
-input update_timers;
-input fsm_start_timer, fsm_clear_timer, fsm_stop_timer;
-output timer_elapsed;
+  input  wire        clk,
+  input  wire        reset,
+  input  wire        wrenb,
+  input  wire        wraddr,
+  input  wire [31:0] config_data,
+  input  wire        update_timers,
+  input  wire        fsm_start_timer,
+  input  wire        fsm_clear_timer,
+  input  wire        fsm_stop_timer,
+  output reg         timer_elapsed
+);
 
 reg [35:0] timer, next_timer;
 reg [35:0] timer_limit, next_timer_limit; // 10ns to 687 seconds
 reg timer_active, next_timer_active;
-reg timer_elapsed, next_timer_elapsed;
+reg next_timer_elapsed;
 
 //
 // 10ns resolution timer's...
@@ -59,10 +61,10 @@ end
 
 always @ (posedge clk)
 begin
-  timer = next_timer;
-  timer_active = next_timer_active;
-  timer_elapsed = next_timer_elapsed;
-  timer_limit = next_timer_limit;
+  timer         <= next_timer;
+  timer_active  <= next_timer_active;
+  timer_elapsed <= next_timer_elapsed;
+  timer_limit   <= next_timer_limit;
 end
 
 always @*

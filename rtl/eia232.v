@@ -30,38 +30,23 @@
 
 `timescale 1ns/100ps
 
-module eia232(
-  clock, reset, speed, send, wrdata, rx, 
-  // outputs
-  tx, cmd, execute, busy);
-
-parameter [31:0] FREQ = 100000000;
-parameter [31:0] SCALE = 28;
-parameter [31:0] RATE = 115200;
-
-input clock;
-input reset;
-input [1:0] speed;	// UART speed
-input send;		// Send data output serial tx
-input [31:0] wrdata;	// Data to be sent
-input rx;		// Serial RX
-output tx;		// Serial TX
-output [39:0] cmd;
-output execute;		// Cmd is valid
-output busy;		// Indicates transmitter busy
-
-wire clock;
-wire reset;
-wire [1:0] speed;
-wire rx;
-wire tx;
-wire [39:0] cmd;
-wire execute;
-wire [31:0] wrdata;
-wire send;
-wire busy;
-
-parameter TRXFREQ = FREQ / SCALE;  // reduced rx & tx clock for receiver and transmitter
+module eia232 #(
+  parameter [31:0] FREQ    = 100000000,
+  parameter [31:0] SCALE   = 28,
+  parameter [31:0] RATE    = 115200,
+  parameter        TRXFREQ = FREQ / SCALE  // reduced rx & tx clock for receiver and transmitter
+)(
+  input  wire        clock,
+  input  wire        reset,
+  input  wire  [1:0] speed,	// UART speed
+  input  wire        send,	// Send data output serial tx
+  input  wire [31:0] wrdata,	// Data to be sent
+  input  wire        rx,	// Serial RX
+  output wire        tx,	// Serial TX
+  output wire [39:0] cmd,
+  output wire        execute,	// Cmd is valid
+  output wire        busy	// Indicates transmitter busy
+);
 
 wire trxClock; 
 reg id, next_id; 
@@ -81,12 +66,12 @@ assign cmd = {opdata,opcode};
 //
 always @(posedge clock) 
 begin
-  id = next_id;
-  xon = next_xon;
-  xoff = next_xoff;
-  wrFlags = next_wrFlags;
-  dly_execute = next_dly_execute;
-  disabledGroupsReg = next_disabledGroupsReg;
+  id                <= next_id;
+  xon               <= next_xon;
+  xoff              <= next_xoff;
+  wrFlags           <= next_wrFlags;
+  dly_execute       <= next_dly_execute;
+  disabledGroupsReg <= next_disabledGroupsReg;
 end
 
 always #1
@@ -112,30 +97,52 @@ end
 //
 // Instantiate prescaler that generates clock matching UART reference (ie: 115200 baud)...
 //
-prescaler #(.SCALE(SCALE)) prescaler(
-  .clock(clock), .reset(reset), .div(speed), .scaled(trxClock));
-
+prescaler #(
+  .SCALE(SCALE)
+) prescaler (
+  .clock  (clock),
+  .reset  (reset),
+  .div    (speed),
+  .scaled (trxClock)
+);
 
 //
 // Instantiate serial-to-parallel receiver.  
 // Asserts "execute" whenever valid 8-bit value received.
 //
-receiver #(.FREQ(TRXFREQ), .RATE(RATE)) receiver(
-  .clock(clock), .reset(reset), .rx(rx), .trxClock(trxClock),
-  .op(opcode), .data(opdata), .execute(execute));
-
+receiver #(
+  .FREQ(TRXFREQ),
+  .RATE(RATE)
+) receiver (
+  .clock    (clock),
+  .reset    (reset),
+  .rx       (rx),
+  .trxClock (trxClock),
+  .op       (opcode),
+  .data     (opdata),
+  .execute  (execute)
+);
 
 //
 // Instantiate parallel-to-serial transmitter.
 // Genereate serial data whenever "send" or "id" asserted.
 // Obeys xon/xoff commands.
 //
-transmitter #(.FREQ(TRXFREQ), .RATE(RATE)) transmitter(
-    .clock(clock), .trxClock(trxClock), .reset(reset),
-    .disabledGroups(disabledGroupsReg),
-    .write(send), .wrdata(wrdata),
-    .id(id), .xon(xon), .xoff(xoff),
-    .tx(tx), .busy(busy));
+transmitter #(
+  .FREQ(TRXFREQ),
+  .RATE(RATE)
+) transmitter (
+  .clock          (clock),
+  .trxClock       (trxClock),
+  .reset          (reset),
+  .disabledGroups (disabledGroupsReg),
+  .write          (send),
+  .wrdata         (wrdata),
+  .id             (id),
+  .xon            (xon),
+  .xoff           (xoff),
+  .tx             (tx),
+  .busy           (busy)
+);
 
 endmodule
-

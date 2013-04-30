@@ -37,7 +37,7 @@ TBN     = tbn/testbench_adv2.v  \
           tbn/testbench_rle.v   \
           tbn/testbench.v
 
-OPT = -D NOSST -D ICARUS -I rtl
+OPT = -g2012 -D NOWAVE -D ICARUS -I rtl
 
 all: adv adv2 rle rle2 full divider
 

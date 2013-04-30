@@ -48,41 +48,38 @@
 `timescale 1ns/100ps
 
 module stage(
-  clock, reset, dataIn, validIn,
-  wrenb, din,
-  wrConfig, config_data,
-  arm, demux_mode, level,
-  // outputs...
-  run, match);
+  // system signals
+  input  wire        clock,
+  input  wire        reset,
+  // input stream
+  input  wire        validIn,
+  input  wire [31:0] dataIn,		// Channel data...
+  //
+  input  wire        wrenb,			// LUT update write enb
+  input  wire  [7:0] din,		// LUT update data.  All 8 LUT's are updated simultaneously.
+  input  wire        wrConfig,			// Write the trigger config register
+  input  wire [31:0] config_data,	// Data to write into trigger config regs
+  input  wire        arm,
+  input  wire        demux_mode,
+  input  wire  [1:0] level,
+  output reg         run,
+  output reg         match
+);
 
-parameter TRUE = 1'b1;
-parameter FALSE = 1'b0;
-
-input clock, reset;
-input validIn;
-input [31:0] dataIn;		// Channel data...
-input wrenb;			// LUT update write enb
-input [7:0] din;		// LUT update data.  All 8 LUT's are updated simultaneously.
-input wrConfig;			// Write the trigger config register
-input [31:0] config_data;	// Data to write into trigger config regs
-input arm;
-input demux_mode;
-input [1:0] level;
-output run;
-output match;
-
+localparam TRUE = 1'b1;
+localparam FALSE = 1'b0;
 
 //
 // Registers...
 //
-reg [27:0] configRegister, next_configRegister;
+reg [27:0] configRegister;
 reg [15:0] counter, next_counter; 
 
-reg [31:0] shiftRegister, next_shiftRegister;
-reg match32Register, next_match32Register;
+reg [31:0] shiftRegister;
+reg match32Register;
 
-reg run, next_run;
-reg match, next_match;
+reg next_run;
+reg next_match;
 
 
 //
@@ -99,15 +96,7 @@ wire [15:0] cfgDelay = configRegister[15:0];
 // Handle mask, value & config register write requests
 //
 always @ (posedge clock) 
-begin
-  configRegister = next_configRegister;
-end
-
-always @*
-begin
-  #1;
-  next_configRegister = (wrConfig) ? config_data[27:0] : configRegister;
-end
+configRegister <= (wrConfig) ? config_data[27:0] : configRegister;
 
 
 //
@@ -136,17 +125,8 @@ wire matchH16 = &matchLUT[7:4];
 // In demux mode only one half must match, in normal mode both words must match...
 //
 always @(posedge clock) 
-begin
-  match32Register = next_match32Register;
-end
-
-always @*
-begin
-  #1;
-  if (demux_mode) 
-    next_match32Register = matchL16 | matchH16;
-  else next_match32Register = matchL16 & matchH16;
-end
+if (demux_mode) match32Register <= matchL16 | matchH16;
+else            match32Register <= matchL16 & matchH16;
 
 
 //
@@ -159,18 +139,10 @@ wire serialChannelH16 = dataIn[{1'b1,cfgChannel[3:0]}];
 //
 // Shift in bit from selected channel whenever dataIn is ready...
 always @(posedge clock) 
-begin
-  shiftRegister = next_shiftRegister;
-end
-
-always @*
-begin
-  #1;
-  next_shiftRegister = shiftRegister;
-  if (validIn)
-    if (demux_mode) // in demux mode two bits come in per sample
-      next_shiftRegister = {shiftRegister,serialChannelH16,serialChannelL16};
-    else next_shiftRegister = {shiftRegister, (cfgChannel[4]) ? serialChannelH16 : serialChannelL16};
+if (validIn) begin
+  // in demux mode two bits come in per sample
+  if (demux_mode) shiftRegister <= {shiftRegister,serialChannelH16,serialChannelL16};
+  else            shiftRegister <= {shiftRegister, (cfgChannel[4]) ? serialChannelH16 : serialChannelL16};
 end
 
 
@@ -189,17 +161,17 @@ always @(posedge clock or posedge reset)
 begin
   if (reset) 
     begin
-      state = OFF;
-      counter = 0;
-      match = FALSE;
-      run = FALSE;
+      state   <= OFF;
+      counter <= 0;
+      match   <= FALSE;
+      run     <= FALSE;
     end
   else 
     begin
-      state = next_state;
-      counter = next_counter;
-      match = next_match;
-      run = next_run;
+      state   <= next_state;
+      counter <= next_counter;
+      match   <= next_match;
+      run     <= next_run;
     end
 end
 
