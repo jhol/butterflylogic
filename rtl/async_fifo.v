@@ -101,41 +101,44 @@ wire [ASYNC_FIFO_MAXDATA:0] ram_wrdata, ram_rddata;
 //
 // Instantiate RAM...
 //
-async_fifo_ram ram (
+async_fifo_ram #(
+  .ASYNC_FIFO_MAXINDEX (ASYNC_FIFO_MAXINDEX),
+  .ASYNC_FIFO_MAXDATA  (ASYNC_FIFO_MAXDATA)
+) ram (
   wrclk, rdclk, 
   ram_wrenb, ram_wraddr, ram_wrdata, 
   ram_rdenb, ram_rdaddr, ram_rddata);
 
-defparam ram.ASYNC_FIFO_MAXINDEX = ASYNC_FIFO_MAXINDEX;
-defparam ram.ASYNC_FIFO_MAXDATA = ASYNC_FIFO_MAXDATA;
 
 
 //
 // Instantiate write path...
 //
-async_fifo_wrpath wrpath (
+async_fifo_wrpath #(
+  .ASYNC_FIFO_MAXINDEX      (ASYNC_FIFO_MAXINDEX     ),
+  .ASYNC_FIFO_MAXDATA       (ASYNC_FIFO_MAXDATA      ),
+  .ASYNC_FIFO_FULLTHRESHOLD (ASYNC_FIFO_FULLTHRESHOLD)
+) wrpath (
   wrclk, wrreset, 
   space_avail, wrenb, wrdata,
   ram_wrenb, ram_wraddr, ram_wrdata,
   stable_wrptr, stable_rdptr);
 
-defparam wrpath.ASYNC_FIFO_MAXINDEX = ASYNC_FIFO_MAXINDEX;
-defparam wrpath.ASYNC_FIFO_MAXDATA = ASYNC_FIFO_MAXDATA;
-defparam wrpath.ASYNC_FIFO_FULLTHRESHOLD = ASYNC_FIFO_FULLTHRESHOLD;
 
 
 //
 // Instantiate read path...
 //
-async_fifo_rdpath rdpath (
+async_fifo_rdpath #(
+  .ASYNC_FIFO_MAXINDEX (ASYNC_FIFO_MAXINDEX),
+  .ASYNC_FIFO_MAXDATA  (ASYNC_FIFO_MAXDATA )
+) rdpath (
   rdclk, rdreset, 
   read_req, data_avail, 
   data_valid, data_out,
   ram_rdenb, ram_rdaddr, ram_rddata,
   stable_wrptr, stable_rdptr);
 
-defparam rdpath.ASYNC_FIFO_MAXINDEX = ASYNC_FIFO_MAXINDEX;
-defparam rdpath.ASYNC_FIFO_MAXDATA = ASYNC_FIFO_MAXDATA;
 
 endmodule
 
