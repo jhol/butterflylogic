@@ -168,10 +168,10 @@ localparam WIDTH = FAW-1+2;
 //
 // Registers...
 //
-reg [FAW-1+1:0] stable_wrptr, next_stable_wrptr;
+reg [FAW-1+1:0] stable_wrptr;
 reg [FAW-1+1:0] wrptr, next_wrptr;
-reg [FAW-1+1:0] rdptr, next_rdptr;
-reg space_avail, next_space_avail;
+reg [FAW-1+1:0] rdptr;
+reg space_avail;
 
 wire [FAW-1+1:0] wrptr_plus1 = wrptr+1'b1;
 wire [FAW-1+1:0] fifo_depth = wrptr-rdptr;
@@ -197,24 +197,12 @@ begin
   rdptr = 0;
 end
 always @ (posedge clk, posedge reset)
-begin
-  if (reset) 
-    begin
-      stable_wrptr <= 0;
-      rdptr <= 0;
-    end
-  else
-    begin
-      stable_wrptr <= next_stable_wrptr;
-      rdptr <= next_rdptr;
-    end
-end
-
-always @(*)
-begin
-  #1;
-  next_stable_wrptr = bin2gray(next_wrptr);
-  next_rdptr = gray2bin(gray_rdptr);
+if (reset) begin
+  stable_wrptr <= 0;
+  rdptr        <= 0;
+end else begin
+  stable_wrptr <= bin2gray(next_wrptr);
+  rdptr        <= gray2bin(gray_rdptr);
 end
 
 
@@ -226,41 +214,28 @@ begin
   space_avail = 0;
   wrptr = 0;
 end
-always @ (posedge clk or posedge reset)
-begin
-  if (reset) 
-    begin
-      space_avail <= 1'b1;
-      wrptr <= 0;
+always @ (posedge clk, posedge reset)
+if (reset) begin
+  space_avail <= 1'b1;
+  wrptr <= 0;
+end else begin
+  space_avail <= fifo_depth<((1<<(FAW-1+1))-ASYNC_FIFO_FULLTHRESHOLD);
+  wrptr <= next_wrptr;
+  // synthesis translate_off
+  if (data_valid) begin
+    #1; 
+    if (fifo_depth >= (1<<(FAW-1+1))) begin
+      $display ("%t: FIFO OVERFLOW!",$realtime);
+      $finish;
     end
-  else
-    begin
-      space_avail <= next_space_avail;
-      wrptr <= next_wrptr;
-      // synthesis translate_off
-      if (data_valid)
-	begin
-          #1; 
-	  if (fifo_depth >= (1<<(FAW-1+1)))
-            begin
-              $display ("%t: FIFO OVERFLOW!",$realtime);
-              $finish;
-            end
-	end
-      // synthesis translate_on
-    end
+  end
+  // synthesis translate_on
 end
 
 always @(*)
-begin
-  #1;
-  next_space_avail = fifo_depth<((1<<(FAW-1+1))-ASYNC_FIFO_FULLTHRESHOLD);
-  next_wrptr = (data_valid && space_avail) ? wrptr_plus1 : wrptr;
-end
+next_wrptr = (data_valid && space_avail) ? wrptr_plus1 : wrptr;
+
 endmodule
-
-
-
 
 ///////////////////////////////////////////////////////////
 //
@@ -299,8 +274,9 @@ localparam WIDTH = FAW-1+2;
 //
 // Registers...
 //
-reg [FAW-1+1:0] stable_rdptr, next_stable_rdptr;
-reg [FAW-1+1:0] wrptr, next_wrptr;
+reg [FAW-1+1:0] stable_rdptr;
+reg [FAW-1+1:0] wrptr;
+wire [FAW-1+1:0] next_wrptr;
 
 reg data_avail, next_data_avail;
 reg data_valid, next_data_valid;
@@ -325,26 +301,15 @@ begin
   wrptr = 0;
 end
 always @ (posedge clk, posedge reset)
-begin
-  if (reset)
-    begin
-      stable_rdptr <= 0;
-      wrptr <= 0;
-    end
-  else
-    begin
-      stable_rdptr = next_stable_rdptr;
-      wrptr = next_wrptr;
-    end
+if (reset) begin
+  stable_rdptr <= 0;
+  wrptr        <= 0;
+end else begin
+  stable_rdptr <= bin2gray(rdptr);
+  wrptr        <= gray2bin(gray_wrptr);
 end
 
-always @(*)
-begin
-  #1;
-  next_stable_rdptr = bin2gray(rdptr);
-  next_wrptr = gray2bin(gray_wrptr);
-end
-
+assign next_wrptr = gray2bin(gray_wrptr);
 
 //
 // Control logic...
@@ -388,6 +353,7 @@ begin
   next_data_avail = (next_wrptr != next_rdptr);
   ram_rdaddr = next_rdptr[FAW-1:0];
 end
+
 endmodule
 
 
@@ -397,34 +363,25 @@ endmodule
 //
 //  Async FIFO RAM...
 //
-module async_fifo_ram (wrclk, rdclk, wrenb, wrptr, wrdata, rdenb, rdptr, rddata);
-
-parameter FAW = 4;
-parameter FDW = 32;
-
-input wrclk, rdclk;
-input wrenb, rdenb;
-input [FAW-1:0] wrptr, rdptr;
-input [FDW-1:0] wrdata;
-output [FDW-1:0] rddata;
-
-wire #1 dly_wrenb = wrenb;
-wire [FAW-1:0] #1 dly_wrptr = wrptr;
-wire [FDW-1:0] #1 dly_wrdata = wrdata;
-
-wire #1 dly_rdenb = rdenb;
-wire [FAW-1:0] #1 dly_rdptr = rdptr;
+module async_fifo_ram #(
+  parameter FAW = 4,
+  parameter FDW = 32
+)(
+  input  wire wrclk, rdclk,
+  input  wire           wrenb,
+  input  wire [FAW-1:0] wrptr,
+  input  wire [FDW-1:0] wrdata,
+  input  wire           rdenb,
+  input  wire [FAW-1:0] rdptr,
+  output reg  [FDW-1:0] rddata
+);
 
 reg [FDW-1:0] mem[0:(1<<(FAW-1+1))-1];
-reg [FAW-1:0] rdptr_reg;
-assign rddata = mem[rdptr_reg];
 
 always @ (posedge wrclk)
-begin
-  if (dly_wrenb) mem[dly_wrptr] <= dly_wrdata;
-end
+if (wrenb) mem[wrptr] <= wrdata;
+
 always @ (posedge rdclk)
-begin
-  rdptr_reg <= dly_rdptr;
-end
+rddata <= mem[rdptr];
+
 endmodule

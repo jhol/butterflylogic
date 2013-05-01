@@ -43,8 +43,8 @@ input D0,D1,C0,C1;
 output Q;
 reg Q;
 initial Q=0;
-always @(posedge C0) Q=D0;
-always @(posedge C1) Q=D1;
+always @(posedge C0) Q<=D0;
+always @(posedge C1) Q<=D1;
 endmodule
 
 
@@ -79,11 +79,11 @@ end
 
 always @(posedge CLK)
 begin
-  if (dly_EN && dly_WE) mem[dly_ADDR] = dly_DATA;
-  rddata = mem[dly_ADDR];
-  sampled_EN = dly_EN;
+  if (dly_EN && dly_WE) mem[dly_ADDR] <= dly_DATA;
+  rddata <= mem[dly_ADDR];
+  sampled_EN <= dly_EN;
   #1;
-  if (sampled_EN) {DOP,DO} = rddata; 
+  if (sampled_EN) {DOP,DO} <= rddata;
 end
 endmodule
 
@@ -103,7 +103,7 @@ assign Q15 = mem[15];
 
 always @(posedge CLK)
 begin
-  if (dly_CE) mem = {mem,dly_D};
+  if (dly_CE) mem <= {mem,dly_D};
 end
 
 reg [3:0] rdaddr;

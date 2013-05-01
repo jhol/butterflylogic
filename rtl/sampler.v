@@ -55,7 +55,6 @@ module sampler (
 localparam TRUE = 1'b1;
 localparam FALSE = 1'b0;
 
-
 //
 // Registers...
 //

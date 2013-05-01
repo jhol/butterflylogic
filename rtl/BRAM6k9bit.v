@@ -25,17 +25,9 @@ end
 //
 // Output mux...
 //
-reg [1:0] dly_ADDR, next_dly_ADDR;
+reg [1:0] dly_ADDR;
 always @(posedge CLK)
-begin
-  dly_ADDR = next_dly_ADDR;
-end
-
-always @*
-begin
-  #1;
-  next_dly_ADDR = ADDR[12:11];
-end
+dly_ADDR <= ADDR[12:11];
 
 reg [7:0] DOUT;
 reg DOUTP;

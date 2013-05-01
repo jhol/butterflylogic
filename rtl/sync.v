@@ -63,8 +63,7 @@ ddr_inbuf inbuf (clock, indata, sync_indata, sync_indata180);
 //
 reg [7:0] testcount, next_testcount;
 initial testcount=0;
-always @ (posedge clock) testcount = next_testcount;
-always @* begin #1; next_testcount = testcount+1'b1; end
+always @ (posedge clock) testcount <= testcount + 'b1;
 
 wire [7:0] testcount1 = {
   testcount[0],testcount[1],testcount[2],testcount[3],
@@ -82,9 +81,9 @@ wire [31:0] itm_count;
 (* equivalent_register_removal = "no" *)
 dly_signal #(32) sampled_testcount_reg (clock, {testcount3,testcount2,testcount1,testcount}, itm_count);
 
-//wire [31:0] itm_indata = (sampled_intTestMode) ? {testcount3,testcount2,testcount1,testcount} : sync_indata;
+//wire [31:0] itm_indata    = (sampled_intTestMode) ? { testcount3, testcount2, testcount1, testcount} : sync_indata   ;
 //wire [31:0] itm_indata180 = (sampled_intTestMode) ? {~testcount3,~testcount2,~testcount1,~testcount} : sync_indata180;
-wire [31:0] itm_indata = (sampled_intTestMode) ? itm_count : sync_indata;
+wire [31:0] itm_indata    = (sampled_intTestMode) ?  itm_count : sync_indata   ;
 wire [31:0] itm_indata180 = (sampled_intTestMode) ? ~itm_count : sync_indata180;
 
 
@@ -126,32 +125,22 @@ filter filter (
 //
 // Another pipeline step for indata selector to not decrease maximum clock rate...
 //
-reg [1:0] select, next_select;
-reg [31:0] selectdata, next_selectdata;
+reg [1:0] select;
+reg [31:0] selectdata;
 
 always @(posedge clock) 
 begin
-  select     <= next_select;
-  selectdata <= next_selectdata;
-end
-
-always @*
-begin
-  #1;
-  if (demux_mode)	   // IED - better starting point for synth tools...
-    next_select = 2'b10;
-  else if (filter_mode)
-    next_select = 2'b11;
-  else next_select = {1'b0,falling_edge};
-
+  // IED - better starting point for synth tools...
+  if (demux_mode)       select <= 2'b10;
+  else if (filter_mode) select <= 2'b11;
+  else                  select <= {1'b0,falling_edge};
   // 4:1 mux...
   case (select) 
-    2'b00 : next_selectdata = itm_indata;
-    2'b01 : next_selectdata = itm_indata180;
-    2'b10 : next_selectdata = demux_indata;
-    2'b11 : next_selectdata = filtered_indata;
+    2'b00 : selectdata <= itm_indata;
+    2'b01 : selectdata <= itm_indata180;
+    2'b10 : selectdata <= demux_indata;
+    2'b11 : selectdata <= filtered_indata;
   endcase
-
 end
 
 //

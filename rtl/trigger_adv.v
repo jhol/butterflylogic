@@ -527,9 +527,7 @@ trigsum else_sum (term_hits, clock, wrenb_sum[1], din, else_term);
 trigsum capture_sum (term_hits, clock, wrenb_sum[2], din, capture_term);
 
 // Sample output of hits...
-reg [2:0] next_hit;
-always @ (posedge clock) hit <= next_hit;
-always @* next_hit = {capture_term, else_term, hit_term};
+always @ (posedge clock) hit <= {capture_term, else_term, hit_term};
 
 endmodule
 

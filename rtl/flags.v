@@ -30,28 +30,22 @@
 
 `timescale 1ns/100ps
 
-module flags(
-  clock, wrFlags, config_data,
-  finish_now,
-  // outputs
-  flags_reg);
+module flags (
+  input  wire        clock,
+  input  wire        wrFlags,
+  input  wire [31:0] config_data,
+  input  wire        finish_now,
+  output reg  [31:0] flags_reg
+);
 
-input clock;
-input wrFlags;
-input [31:0] config_data;
-input finish_now;
-output [31:0] flags_reg;
-
-reg [31:0] flags_reg, next_flags_reg;
+reg [31:0] next_flags_reg;
 
 //
 // Write flags register...
 //
 initial flags_reg = 0;
 always @(posedge clock) 
-begin
-  flags_reg = next_flags_reg;
-end
+flags_reg <= next_flags_reg;
 
 always @*
 begin

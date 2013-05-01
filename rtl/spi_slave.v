@@ -88,8 +88,8 @@ spi_receiver spi_receiver(
   .mosi         (mosi),
   .cs           (sync_cs),
   .transmitting (busy),
-  .op           (opcode),
-  .data         (opdata),
+  .opcode       (opcode),
+  .opdata       (opdata),
   .execute      (execute)
 );
 

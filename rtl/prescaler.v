@@ -43,18 +43,13 @@ scaled = 1'b1;
 reg [31:0] counter, next_counter;
 reg next_scaled;
 
-always @(posedge clock or posedge reset) 
-begin
-  if (reset)
-    begin
-      counter = 0;
-      scaled = 1'b0;
-    end
-  else 
-    begin
-      counter = next_counter;
-      scaled = next_scaled;
-    end
+always @(posedge clock, posedge reset) 
+if (reset) begin
+  counter <= 0;
+  scaled  <= 1'b0;
+end else begin
+  counter <= next_counter;
+  scaled  <= next_scaled;
 end
 
 always #1

@@ -71,17 +71,17 @@ assign op = opcode;
 assign data = databuf;
 
 always @(posedge clock, posedge reset) 
-begin
-  if (reset)
-    state = INIT;
-  else state = next_state;
+if (reset) state <= INIT;
+else       state <= next_state;
 
-  counter = next_counter;
-  bitcount = next_bitcount;
-  bytecount = next_bytecount;
-  databuf = next_databuf;
-  opcode = next_opcode;
-  execute = next_execute;
+always @(posedge clock) 
+begin
+  counter   <= next_counter;
+  bitcount  <= next_bitcount;
+  bytecount <= next_bytecount;
+  databuf   <= next_databuf;
+  opcode    <= next_opcode;
+  execute   <= next_execute;
 end
 
 always #1

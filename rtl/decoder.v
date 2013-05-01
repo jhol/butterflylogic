@@ -37,21 +37,24 @@
 `timescale 1ns/100ps
 
 module decoder (
+  // system signals
   input  wire       clock,
+  // configuration/control signals
   input  wire       execute,
   input  wire [7:0] opcode,
-  output reg  [3:0] wrtrigmask,
-  output reg  [3:0] wrtrigval,
-  output reg  [3:0] wrtrigcfg,
-  output reg        wrspeed,
-  output reg        wrsize,
-  output reg        wrFlags,
-  output reg        wrTrigSelect,
-  output reg        wrTrigChain,
-  output reg        finish_now,
-  output reg        arm_basic,
-  output reg        arm_adv,
-  output reg        resetCmd
+  // decoded ouptputs
+  output reg  [3:0] wrtrigmask   = 0,
+  output reg  [3:0] wrtrigval    = 0,
+  output reg  [3:0] wrtrigcfg    = 0,
+  output reg        wrspeed      = 0,
+  output reg        wrsize       = 0,
+  output reg        wrFlags      = 0,
+  output reg        wrTrigSelect = 0,
+  output reg        wrTrigChain  = 0,
+  output reg        finish_now   = 0,
+  output reg        arm_basic    = 0,
+  output reg        arm_adv      = 0,
+  output reg        resetCmd     = 0
 );
 
 //
@@ -100,6 +103,19 @@ begin
     wrtrigmask[3] <= (opcode == 8'hCC);
     wrtrigval [3] <= (opcode == 8'hCD);
     wrtrigcfg [3] <= (opcode == 8'hCE);
+  end else begin
+    resetCmd      <= 0;
+    arm_basic     <= 0;
+    finish_now    <= 0;
+    arm_adv       <= 0;
+    wrspeed       <= 0;
+    wrsize        <= 0;
+    wrFlags       <= 0;
+    wrTrigSelect  <= 0;
+    wrTrigChain   <= 0;
+    wrtrigmask    <= 0;
+    wrtrigval     <= 0;
+    wrtrigcfg     <= 0;
   end
 end
 

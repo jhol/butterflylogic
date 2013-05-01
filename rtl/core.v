@@ -113,10 +113,12 @@ assign extClockOut = sampleClock;
 //
 // Reset...
 //
+wire reset_core;
+wire reset_sample;
 wire resetCmd;
 wire reset = extReset | resetCmd;
 
-reset_sync reset_sync_core (clock, reset, reset_core); 
+reset_sync reset_sync_core   (clock      , reset     , reset_core  ); 
 reset_sync reset_sync_sample (sampleClock, reset_core, reset_sample);
 
 
@@ -150,47 +152,24 @@ assign run = run_basic | run_adv | sampled_extTriggerIn;
 //
 // Logic Sniffers LEDs are connected to 3.3V so a logic 0 turns the LED on.
 //
-reg next_armLEDnn;
-reg next_triggerLEDnn;
-
 `ifdef HEARTBEAT
-reg [31:0] hcount, next_hcount;
+reg [31:0] hcount;
 initial hcount=0;
+
 always @ (posedge clock)
-begin
-  hcount = next_hcount;
-end
+hcount <= (~|hcount) ? 100000000 : (hcount-1'b1);
+
+always @ (posedge clock)
+if (~|hcount) armLEDnn <= !armLEDnn;
+`else
+always @ (posedge clock)
+if      (arm) armLEDnn <= ~1'b1;
+else if (run) armLEDnn <= ~1'b0;
 `endif
 
-always @(posedge clock) 
-begin
-  armLEDnn = next_armLEDnn;
-  triggerLEDnn = next_triggerLEDnn;
-end
-
-always @*
-begin
-  #1;
-  next_armLEDnn = armLEDnn;
-  next_triggerLEDnn = triggerLEDnn;
-  if (arm) 
-    begin
-      next_armLEDnn = ~1'b1;
-      next_triggerLEDnn = ~1'b0;
-    end
-  else if (run) 
-    begin
-      next_armLEDnn = ~1'b0;
-      next_triggerLEDnn = ~1'b1;
-    end
-
-`ifdef HEARTBEAT
-  next_hcount = (~|hcount) ? 100000000 : (hcount-1'b1);
-  next_armLEDnn = armLEDnn;
-  if (~|hcount) next_armLEDnn = !armLEDnn;
-`endif
-end
-
+always @(posedge clock)
+if      (run) triggerLEDnn <= ~1'b1;
+else if (arm) triggerLEDnn <= ~1'b0;
 
 //
 // Select between internal and external sampling clock...
@@ -386,10 +365,10 @@ pipeline_stall #(
 pipeline_stall #(
   .DELAY  (1)
 ) dly_run_reg (
-  .clk(clock), 
-  .reset(reset_core), 
-  .datain(run), 
-  .dataout(dly_run));
+  .clk     (clock), 
+  .reset   (reset_core), 
+  .datain  (run), 
+  .dataout (dly_run));
 
 
 //

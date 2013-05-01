@@ -100,19 +100,19 @@ wire rle_repeat_mode = 0; // (rle_mode==0);  // Disabled - modes 0 & 1 now ident
 always @ (posedge clock)
 begin
   case (disabledGroups)
-    4'b1110,4'b1101,4'b1011,4'b0111                 : mode = 2'h0; // 8-bit
-    4'b1100,4'b1010,4'b0110,4'b1001,4'b0101,4'b0011 : mode = 2'h1; // 16-bit
-    4'b1000,4'b0100,4'b0010,4'b0001                 : mode = 2'h2; // 24-bit
-    default                                         : mode = 2'h3; // 24 or 32-bit
+    4'b1110,4'b1101,4'b1011,4'b0111                 : mode <= 2'h0; // 8-bit
+    4'b1100,4'b1010,4'b0110,4'b1001,4'b0101,4'b0011 : mode <= 2'h1; // 16-bit
+    4'b1000,4'b0100,4'b0010,4'b0001                 : mode <= 2'h2; // 24-bit
+    default                                         : mode <= 2'h3; // 24 or 32-bit
   endcase
 
   // Mask to strip off disabled groups.  Data must have already been
   // aligned (see data_align.v)...
   case (mode)
-    2'h0    : data_mask = 32'h0000007F;
-    2'h1    : data_mask = 32'h00007FFF;
-    2'h2    : data_mask = 32'h007FFFFF;
-    default : data_mask = 32'h7FFFFFFF;
+    2'h0    : data_mask <= 32'h0000007F;
+    2'h1    : data_mask <= 32'h00007FFF;
+    2'h2    : data_mask <= 32'h007FFFFF;
+    default : data_mask <= 32'h7FFFFFFF;
   endcase
 end
 
@@ -120,17 +120,12 @@ end
 // Control Logic...
 //
 always @ (posedge clock, posedge reset)
-begin
-  if (reset)
-    begin
-      active    <= 0;
-      mask_flag <= 0;
-    end
-  else 
-    begin
-      active    <= next_active;
-      mask_flag <= next_mask_flag;
-    end
+if (reset) begin
+  active    <= 0;
+  mask_flag <= 0;
+end else begin
+  active    <= next_active;
+  mask_flag <= next_mask_flag;
 end
 
 always @ (posedge clock)

@@ -81,16 +81,14 @@ reg match32Register;
 reg next_run;
 reg next_match;
 
-
 //
 // Useful decodes...
 //
-wire cfgStart = configRegister[27];
-wire cfgSerial = configRegister[26];
-wire [4:0] cfgChannel = configRegister[24:20];
-wire [1:0] cfgLevel = configRegister[17:16];
-wire [15:0] cfgDelay = configRegister[15:0];
-
+wire        cfgStart   = configRegister[27];
+wire        cfgSerial  = configRegister[26];
+wire  [4:0] cfgChannel = configRegister[24:20];
+wire  [1:0] cfgLevel   = configRegister[17:16];
+wire [15:0] cfgDelay   = configRegister[15:0];
 
 //
 // Handle mask, value & config register write requests
@@ -98,36 +96,33 @@ wire [15:0] cfgDelay = configRegister[15:0];
 always @ (posedge clock) 
 configRegister <= (wrConfig) ? config_data[27:0] : configRegister;
 
-
 //
 // Use shift register or dataIn depending on configuration...
 //
 wire [31:0] testValue = (cfgSerial) ? shiftRegister : dataIn;
 
-
 //
 // Do LUT table based comparison...
 //
+wire [7:0] dout;
 wire [7:0] matchLUT;
-trigterm_4bit byte0 (testValue[3:0], clock, wrenb, din[0], dout0, matchLUT[0]);
-trigterm_4bit byte1 (testValue[7:4], clock, wrenb, din[1], dout1, matchLUT[1]);
-trigterm_4bit byte2 (testValue[11:8], clock, wrenb, din[2], dout2, matchLUT[2]);
-trigterm_4bit byte3 (testValue[15:12], clock, wrenb, din[3], dout3, matchLUT[3]);
-trigterm_4bit byte4 (testValue[19:16], clock, wrenb, din[4], dout4, matchLUT[4]);
-trigterm_4bit byte5 (testValue[23:20], clock, wrenb, din[5], dout5, matchLUT[5]);
-trigterm_4bit byte6 (testValue[27:24], clock, wrenb, din[6], dout6, matchLUT[6]);
-trigterm_4bit byte7 (testValue[31:28], clock, wrenb, din[7], dout7, matchLUT[7]);
+trigterm_4bit byte0 (testValue[ 3: 0], clock, wrenb, din[0], dout[0], matchLUT[0]);
+trigterm_4bit byte1 (testValue[ 7: 4], clock, wrenb, din[1], dout[1], matchLUT[1]);
+trigterm_4bit byte2 (testValue[11: 8], clock, wrenb, din[2], dout[2], matchLUT[2]);
+trigterm_4bit byte3 (testValue[15:12], clock, wrenb, din[3], dout[3], matchLUT[3]);
+trigterm_4bit byte4 (testValue[19:16], clock, wrenb, din[4], dout[4], matchLUT[4]);
+trigterm_4bit byte5 (testValue[23:20], clock, wrenb, din[5], dout[5], matchLUT[5]);
+trigterm_4bit byte6 (testValue[27:24], clock, wrenb, din[6], dout[6], matchLUT[6]);
+trigterm_4bit byte7 (testValue[31:28], clock, wrenb, din[7], dout[7], matchLUT[7]);
 wire matchL16 = &matchLUT[3:0];
 wire matchH16 = &matchLUT[7:4];
-
 
 //
 // In demux mode only one half must match, in normal mode both words must match...
 //
 always @(posedge clock) 
-if (demux_mode) match32Register <= matchL16 | matchH16;
-else            match32Register <= matchL16 & matchH16;
-
+if (demux_mode) match32Register <= matchH16 | matchL16;
+else            match32Register <= matchH16 & matchL16;
 
 //
 // Select serial channel based on cfgChannel...
@@ -135,44 +130,37 @@ else            match32Register <= matchL16 & matchH16;
 wire serialChannelL16 = dataIn[{1'b0,cfgChannel[3:0]}];
 wire serialChannelH16 = dataIn[{1'b1,cfgChannel[3:0]}];
 
-
 //
 // Shift in bit from selected channel whenever dataIn is ready...
 always @(posedge clock) 
 if (validIn) begin
   // in demux mode two bits come in per sample
-  if (demux_mode) shiftRegister <= {shiftRegister,serialChannelH16,serialChannelL16};
+  if (demux_mode) shiftRegister <= {shiftRegister,                   serialChannelH16,  serialChannelL16};
   else            shiftRegister <= {shiftRegister, (cfgChannel[4]) ? serialChannelH16 : serialChannelL16};
 end
-
 
 //
 // Trigger state machine...
 //
-parameter [1:0]
-  OFF = 2'h0,
-  ARMED = 2'h1,
+localparam [1:0]
+  OFF     = 2'h0,
+  ARMED   = 2'h1,
   MATCHED = 2'h2;
 
 reg [1:0] state, next_state;
 
 initial state = OFF;
-always @(posedge clock or posedge reset) 
-begin
-  if (reset) 
-    begin
-      state   <= OFF;
-      counter <= 0;
-      match   <= FALSE;
-      run     <= FALSE;
-    end
-  else 
-    begin
-      state   <= next_state;
-      counter <= next_counter;
-      match   <= next_match;
-      run     <= next_run;
-    end
+always @(posedge clock, posedge reset) 
+if (reset) begin
+  state   <= OFF;
+  counter <= 0;
+  match   <= FALSE;
+  run     <= FALSE;
+end else begin
+  state   <= next_state;
+  counter <= next_counter;
+  match   <= next_match;
+  run     <= next_run;
 end
 
 always @*
@@ -211,6 +199,5 @@ begin
       end
   endcase
 end
+
 endmodule
-
-

@@ -46,8 +46,8 @@ module spi_receiver (
   input  wire        mosi,
   input  wire        cs,
   input  wire        transmitting,
-  output wire  [7:0] op,
-  output wire [31:0] data,
+  output reg   [7:0] opcode,
+  output reg  [31:0] opdata,
   output reg         execute
 );
 
@@ -56,17 +56,13 @@ localparam READLONG   = 1'h1;
 
 reg state, next_state;			// receiver state
 reg [1:0] bytecount, next_bytecount;	// count rxed bytes of current command
-reg [7:0] opcode, next_opcode;		// opcode byte
-reg [31:0] databuf, next_databuf;	// data dword
+reg [7:0] next_opcode;		// opcode byte
+reg [31:0] next_opdata;	// data dword
 reg next_execute;
 
 reg [2:0] bitcount, next_bitcount;	// count rxed bits of current byte
 reg [7:0] spiByte, next_spiByte;
 reg byteready, next_byteready;
-
-assign op = opcode;
-assign data = databuf;
-
 
 dly_signal mosi_reg (clock, mosi, sampled_mosi);
 dly_signal dly_sclk_reg (clock, sclk, dly_sclk);
@@ -124,12 +120,13 @@ always @(posedge clock, posedge extReset)
 if (extReset)  state <= READOPCODE;
 else           state <= next_state;
 
-initial databuf = 0;
+initial opcode = 0;
+initial opdata = 0;
 always @(posedge clock) 
 begin
   bytecount <= next_bytecount;
   opcode    <= next_opcode;
-  databuf   <= next_databuf;
+  opdata    <= next_opdata;
   execute   <= next_execute;
 end
 
@@ -139,7 +136,7 @@ begin
   next_state = state;
   next_bytecount = bytecount;
   next_opcode = opcode;
-  next_databuf = databuf;
+  next_opdata = opdata;
   next_execute = 1'b0;
 
   case (state)
@@ -164,7 +161,7 @@ begin
 	if (byteready)
 	  begin
 	    next_bytecount = bytecount + 1'b1;
-	    next_databuf = {spiByte,databuf[31:8]};
+	    next_opdata = {spiByte,opdata[31:8]};
 	    if (&bytecount) // execute long command
 	      begin
 		next_execute = 1'b1;
