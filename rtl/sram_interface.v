@@ -40,7 +40,8 @@
 module sram_interface #(
   // memory parameters
   parameter MSZ = 6*1024,       // size (6K x 36bit)
-  parameter MAW = $clog2(MSZ),  // address width (13bit => 8K)
+//parameter MAW = $clog2(MSZ),  // address width (13bit => 8K)
+  parameter MAW = 13,  // address width (13bit => 8K)
   parameter MDW = 36            // data width
 )(
   input  wire           clk,
@@ -99,7 +100,6 @@ end
 
 always @*
 begin
-  #1;
   next_init = 1'b0;
   next_mode = mode;
   next_validmask = validmask;
@@ -184,7 +184,6 @@ end
 reg [MDW-1:0] ram_datain;
 always @*
 begin
-  #1;
   ram_datain = wrdata;
   casex (mode[1:0])
     2'bx1 : ram_datain[31:0] = {wrdata[7:0],wrdata[7:0],wrdata[7:0],wrdata[7:0]}; // 8 bit memory
