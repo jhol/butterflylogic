@@ -130,7 +130,7 @@ spi_slave spi_slave (
   .busy       (busy),
   // SPI signals
   .sclk       (spi_sclk), 
-  .cs         (spi_cs_n),
+  .cs_n       (spi_cs_n),
   .mosi       (spi_mosi),
   .miso       (spi_miso)
 );

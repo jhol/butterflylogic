@@ -219,29 +219,29 @@ NET "dataReady" IOSTANDARD = LVCMOS33;
 ##NET "dataReady" SLEW = FAST;
 ##NET "dataReady" DRIVE = 8;
 NET "dataReady" LOC = P35;
-NET "miso" IOSTANDARD = LVCMOS33;
-##NET "miso" SLEW = FAST;
-##NET "miso" DRIVE = 8;
-NET "miso" LOC = P36;
-NET "mosi" IOSTANDARD = LVCMOS33;
-##NET "mosi" SLEW = FAST;
-##NET "mosi" DRIVE = 8;
-NET "mosi" LOC = P38;
-NET "sclk" IOSTANDARD = LVCMOS33;
-##NET "sclk" SLEW = FAST;
-##NET "sclk" DRIVE = 8;
-NET "sclk" LOC = P40;
+NET "spi_miso" IOSTANDARD = LVCMOS33;
+##NET "spi_miso" SLEW = FAST;
+##NET "spi_miso" DRIVE = 8;
+NET "spi_miso" LOC = P36;
+NET "spi_mosi" IOSTANDARD = LVCMOS33;
+##NET "spi_mosi" SLEW = FAST;
+##NET "spi_mosi" DRIVE = 8;
+NET "spi_mosi" LOC = P38;
+NET "spi_sclk" IOSTANDARD = LVCMOS33;
+##NET "spi_sclk" SLEW = FAST;
+##NET "spi_sclk" DRIVE = 8;
+NET "spi_sclk" LOC = P40;
 #Shared Flash_SO line
-NET "cs" IOSTANDARD = LVCMOS33;
-##NET "cs" SLEW = FAST;
-##NET "cs" DRIVE = 8;
-NET "cs" LOC = P44;
+NET "spi_cs_n" IOSTANDARD = LVCMOS33;
+##NET "spi_cs_n" SLEW = FAST;
+##NET "spi_cs_n" DRIVE = 8;
+NET "spi_cs_n" LOC = P44;
 
 
 ## Input timing constraints...
-INST "cs" TNM = "spi";
-INST "mosi" TNM = "spi";
-INST "sclk" TNM = "spi";
+INST "spi_cs_n" TNM = "spi";
+INST "spi_mosi" TNM = "spi";
+INST "spi_sclk" TNM = "spi";
 TIMEGRP "spi" OFFSET = IN 7 ns VALID 9 ns BEFORE "bf_clock" RISING;
 
 INST "indata[0]" TNM = "allins";
@@ -280,7 +280,7 @@ TIMEGRP "allins" OFFSET = IN 7 ns VALID 9 ns BEFORE "bf_clock" RISING;
 TIMEGRP "allins" OFFSET = IN 7 ns VALID 9 ns BEFORE "bf_clock" FALLING;
 
 ## Output timing constraints...
-INST "miso" TNM = "allouts";
+INST "spi_miso" TNM = "allouts";
 INST "armLEDnn" TNM = "allouts";
 INST "triggerLEDnn" TNM = "allouts";
 INST "dataReady" TNM = "allouts";
@@ -306,7 +306,7 @@ TIMEGRP "allouts" OFFSET = OUT 9 ns AFTER "bf_clock";
 
 ## Put SPI synchronizers as close to respective I/O's as possible...
 INST "spi_slave/sclk_sync/*" AREA_GROUP = "pblock_1";
-INST "spi_slave/cs_sync/*" AREA_GROUP = "pblock_1";
+INST "spi_slave/cs_n_sync/*" AREA_GROUP = "pblock_1";
 AREA_GROUP "pblock_1" RANGE=SLICE_X34Y0:SLICE_X35Y1;
 
 ## Add jitter uncertainy to clock...

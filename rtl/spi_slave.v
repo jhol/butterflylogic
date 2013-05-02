@@ -33,26 +33,27 @@
 module spi_slave(
   input  wire        clock,
   input  wire        extReset,
-  input  wire        sclk,
-  input  wire        cs,
   input  wire        send,
   input  wire [31:0] send_data,
   input  wire  [3:0] send_valid,
   input  wire [31:0] dataIn,
-  input  wire        mosi,
   output wire [39:0] cmd,
   output wire        execute,
   output wire        busy,
+  // SPI signals
+  input  wire        cs_n,
+  input  wire        sclk,
+  input  wire        mosi,
   output wire        miso
 );
 
 //
 // Registers...
 //
-reg query_id, next_query_id; 
-reg query_metadata, next_query_metadata;
-reg query_dataIn, next_query_dataIn; 
-reg dly_execute, next_dly_execute; 
+reg query_id; 
+reg query_metadata;
+reg query_dataIn; 
+reg dly_execute; 
 
 wire [7:0] opcode;
 wire [31:0] opdata;
@@ -63,7 +64,7 @@ assign cmd = {opdata,opcode};
 // Synchronize inputs...
 //
 full_synchronizer sclk_sync (clock, extReset, sclk, sync_sclk);
-full_synchronizer cs_sync   (clock, extReset, cs  , sync_cs  );
+full_synchronizer cs_n_sync (clock, extReset, cs_n, sync_cs_n);
 
 //
 // Instantaite the meta data generator...
@@ -86,7 +87,7 @@ spi_receiver spi_receiver(
   .sclk         (sync_sclk),
   .extReset     (extReset),
   .mosi         (mosi),
-  .cs           (sync_cs),
+  .cs           (sync_cs_n),
   .transmitting (busy),
   .opcode       (opcode),
   .opdata       (opdata),
@@ -102,7 +103,7 @@ spi_transmitter spi_transmitter(
   .send_valid   (send_valid),
   .writeMeta    (writeMeta),
   .meta_data    (meta_data),
-  .cs           (sync_cs),
+  .cs           (sync_cs_n),
   .query_id     (query_id), 
   .query_dataIn (query_dataIn),
   .dataIn       (dataIn),
@@ -116,24 +117,16 @@ spi_transmitter spi_transmitter(
 //
 always @(posedge clock) 
 begin
-  query_id       <= next_query_id;
-  query_metadata <= next_query_metadata;
-  query_dataIn   <= next_query_dataIn;
-  dly_execute    <= next_dly_execute;
+  dly_execute    <= execute;
+  if (!dly_execute && execute) begin
+    query_id       <= (opcode == 8'h02);
+    query_metadata <= (opcode == 8'h04); 
+    query_dataIn   <= (opcode == 8'h06);
+  end else begin
+    query_id       <= 1'b0; 
+    query_metadata <= 1'b0;
+    query_dataIn   <= 1'b0;
+  end
 end
 
-always @*
-begin
-  next_query_id = 1'b0; 
-  next_query_metadata = 1'b0;
-  next_query_dataIn = 1'b0;
-  next_dly_execute = execute;
-
-  if (!dly_execute && execute)
-    case (opcode)
-      8'h02 : next_query_id = 1'b1;
-      8'h04 : next_query_metadata = 1'b1; 
-      8'h06 : next_query_dataIn = 1'b1;
-    endcase
-end
 endmodule
