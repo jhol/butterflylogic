@@ -30,11 +30,12 @@ RTL     = rtl/async_fifo.v      \
           rtl/trigger_adv.v     \
           rtl/trigger.v         \
           $(RTL_SPI)
-TBN     = tbn/testbench_adv2.v  \
-          tbn/testbench_adv.v   \
-          tbn/testbench_rle2.v  \
-          tbn/testbench_rle.v   \
-          tbn/testbench.v
+TBN_MIX = tbn/testbench_adv2.sv \
+          tbn/testbench_adv.sv  \
+          tbn/testbench_rle2.sv \
+          tbn/testbench_rle.sv  \
+          tbn/testbench.sv
+TBN =     tbn/spi_master.sv
 
 ifdef WAVE
 OPT = -g2012 -I rtl -D ICARUS -D WAVE
@@ -44,28 +45,28 @@ endif
 
 all: adv adv2 rle rle2 full divider
 
-adv: tbn/testbench_adv.v rtl/trigger_adv.v rtl/timer.v rtl/stubs.v rtl/regs.v
-	iverilog $(OPT) tbn/testbench_adv.v rtl/trigger_adv.v rtl/timer.v rtl/stubs.v rtl/regs.v -o adv.out
+adv: tbn/testbench_adv.sv rtl/trigger_adv.v rtl/timer.v rtl/stubs.v rtl/regs.v
+	iverilog $(OPT) tbn/testbench_adv.sv rtl/trigger_adv.v rtl/timer.v rtl/stubs.v rtl/regs.v -o adv.out
 	vvp -n -l adv.log adv.out
 
-adv2: tbn/testbench_adv2.v $(RTL)
-	iverilog $(OPT) tbn/testbench_adv2.v $(RTL) -o adv2.out
+adv2: tbn/testbench_adv2.sv $(RTL)
+	iverilog $(OPT) tbn/testbench_adv2.sv $(RTL) -o adv2.out
 	vvp -n -l adv2.log adv2.out
 
-rle: tbn/testbench_rle.v rtl/rle_enc.v
-	iverilog $(OPT) tbn/testbench_rle.v rtl/rle_enc.v -o rle.out
+rle: tbn/testbench_rle.sv rtl/rle_enc.v
+	iverilog $(OPT) tbn/testbench_rle.sv rtl/rle_enc.v -o rle.out
 	vvp -n -l rle.log rle.out
 
-rle2: tbn/testbench_rle2.v $(RTL)
-	iverilog $(OPT) tbn/testbench_rle2.v $(RTL) -o rle2.out
+rle2: tbn/testbench_rle2.sv $(RTL)
+	iverilog $(OPT) tbn/testbench_rle2.sv $(RTL) -o rle2.out
 	vvp -n -l rle2.log rle2.out
 
-full: tbn/testbench.v $(RTL)
-	iverilog $(OPT) tbn/testbench.v $(RTL) -o full.out
+full: tbn/testbench.sv $(RTL) $(TBN)
+	iverilog $(OPT) tbn/testbench.sv $(RTL) $(TBN) -o full.out
 	vvp -n -l full.log full.out
 
-divider: tbn/testbench.v $(RTL)
-	iverilog $(OPT) -D TEST_DIVIDER tbn/testbench.v $(RTL) -o divider.out
+divider: tbn/testbench.sv $(RTL) $(TBN)
+	iverilog $(OPT) -D TEST_DIVIDER tbn/testbench.sv $(RTL) $(TBN) -o divider.out
 	vvp -n -l divider.log divider.out
 
 gtk:

@@ -2,89 +2,74 @@
 
 module testbench();
 
-reg bf_clock;
-initial bf_clock=0;
-always
-begin
-  #10;
-  bf_clock = !bf_clock;
-end
+// system clock source
+logic bf_clock;
+initial    bf_clock = 1'b0;
+always #10 bf_clock = ~bf_clock;
 
-reg sclk, mosi, cs;
-initial begin sclk=0; mosi=1'b0; cs=1'b1; end
-
+// SPI signals
+wire spi_sclk;
+wire spi_cs_n;
+wire spi_mosi;
+wire spi_miso;
 
 //
 // Instantiate the Logic Sniffer...
 //
-wire extClockIn = 1'b0;
-wire extTriggerIn = 1'b0;
-wire [31:0] indata;
-reg [31:0] indata_reg;
+logic        extClockIn   = 1'b0;
+logic        extTriggerIn = 1'b0;
+wire  [31:0] indata;
+logic [31:0] indata_reg;
+
 assign indata = indata_reg;
 
 Logic_Sniffer sniffer (
-  .bf_clock(bf_clock),
-  .extClockIn(extClockIn),
-  .extClockOut(extClockOut),
-  .extTriggerIn(extTriggerIn),
-  .extTriggerOut(extTriggerOut),
-  .indata(indata),
-  .miso(miso), 
-  .mosi(mosi), 
-  .sclk(sclk), 
-  .cs(cs),
-  .dataReady(dataReady),
-  .armLEDnn(armLEDnn),
-  .triggerLEDnn(triggerLEDnn));
+  // system signals
+  .bf_clock      (bf_clock),
+  // logic analyzer signals
+  .extClockIn    (extClockIn),
+  .extClockOut   (extClockOut),
+  .extTriggerIn  (extTriggerIn),
+  .extTriggerOut (extTriggerOut),
+  .indata        (indata),
+  .dataReady     (dataReady),
+  .armLEDnn      (armLEDnn),
+  .triggerLEDnn  (triggerLEDnn),
+  // SPI signals
+  .spi_sclk      (spi_sclk),
+  .spi_cs_n      (spi_cs_n),
+  .spi_miso      (spi_miso),
+  .spi_mosi      (spi_mosi)
+);
 
-
-//
-// PIC emulator...
-//
-reg wrbyte_req;
-reg [7:0] wrbyte_data;
-initial begin wrbyte_req=0; wrbyte_data=0; end
-always @(posedge wrbyte_req)
-begin : temp
-  integer i;
-  i = 7;
-  cs = 0;
-  #100;
-  repeat (8) 
-    begin 
-      sclk = 0; mosi = wrbyte_data[i]; i=i-1; #50;
-      sclk = 1; #50;
-    end
-  sclk = 0;
-  mosi = 0;
-  #100;
-  cs = 1;
-  #100;
-  wrbyte_req = 0;
-end
-
+spi_master #(
+  .PERIOD (100)
+) spi_master (
+  .sclk (spi_sclk),
+  .cs_n (spi_cs_n),
+  .miso (spi_miso),
+  .mosi (spi_mosi)
+);
 
 //
 // Generate SPI test commands...
 //
-task write_cmd;
-input [7:0] value;
-integer i;
-begin 
-  wrbyte_req = 1;
-  wrbyte_data = value;
-  @(negedge wrbyte_req);
+task write_cmd (input logic [7:0] dmosi);
+  logic [7:0] dmiso;
+begin
+  spi_master.cycle (dmosi, dmiso);
+  $display ("%t: SPI: (0x%02x) '%c'",$realtime, dmiso, dmiso);
 end
 endtask
 
-task write_longcmd;
-input [7:0] opcode;
-input [31:0] value;
+task write_longcmd (
+  input  [7:0] opcode,
+  input [31:0] value
+);
 begin
   write_cmd (opcode);
-  write_cmd (value[7:0]);
-  write_cmd (value[15:8]);
+  write_cmd (value[ 7: 0]);
+  write_cmd (value[15: 8]);
   write_cmd (value[23:16]);
   write_cmd (value[31:24]);
 end
@@ -95,7 +80,7 @@ endtask
 task wait4fpga;
 begin
   while (!dataReady) @(posedge dataReady);
-  while (dataReady) write_cmd(8'h7F);
+  while ( dataReady) write_cmd(8'h7F);
 end
 endtask
 
@@ -254,13 +239,9 @@ begin
     end
     begin
       repeat (1) @(posedge bf_clock); 
-      repeat (1000)
-        begin
-	  #5;
-          indata_reg = indata_reg+1;
-	  #5;
-          indata_reg = indata_reg+1;
-        end
+      repeat (2000) begin
+        #5; indata_reg = indata_reg+1;
+      end
     end
   join
 end
@@ -332,8 +313,6 @@ begin
   $finish;
 end
 
-
-
 //
 // Initialized wavedump...
 //
@@ -347,38 +326,7 @@ begin
 end
 `endif
 
-reg [7:0] miso_byte = 0;
-integer miso_count = 0;
-always @(posedge sclk)
-begin
-  #50;
-  if (cs) 
-    begin
-      miso_byte=8'hzz; 
-      miso_count=0;
-    end
-  else 
-    begin
-      miso_byte = {miso_byte[6:0],miso};
-      miso_count=miso_count+1;
-    end
+// periodic time printouts
+always #10000 $display ("%t",$realtime);
 
-  if (miso_count<8)
-    $display ("%t: wr=%d   rd=%d",$realtime, mosi, miso);
-  else if ((miso_byte>=32) && (miso_byte<128))
-    begin
-      $display ("%t: wr=%d   rd=%d (0x%02x) '%c'",$realtime, mosi, miso, miso_byte, miso_byte);
-      miso_count=0;
-    end
-  else
-    begin
-      $display ("%t: wr=%d   rd=%d (0x%02x)",$realtime, mosi, miso, miso_byte);
-      miso_count=0;
-    end
-end
-
-always #10000
-begin
-  $display ("%t",$realtime);
-end
 endmodule

@@ -39,18 +39,21 @@
 `define COMM_TYPE_SPI 1		// comment out for UART mode
 
 module Logic_Sniffer #(
-`ifndef COMM_TYPE_SPI
-  parameter FREQ = 100000000,       // limited to 100M by onboard SRAM
-  parameter TRXSCALE = 28,          // 100M / 28 / 115200 = 31 (5bit)  --If serial communications are not working then try adjusting this number.
-  parameter RATE = 115200,          // maximum & base rate
-// Sets the speed for UART communications
-// SYSTEM_JITTER = "1000 ps"
-`endif
+`ifdef COMM_TYPE_SPI
   parameter [31:0] MEMORY_DEPTH=6,
   parameter [31:0] CLOCK_SPEED=50,
   parameter  [1:0] SPEED=2'b00
+`else
+  // Sets the speed for UART communications
+  // SYSTEM_JITTER = "1000 ps"
+  parameter FREQ = 100000000,       // limited to 100M by onboard SRAM
+  parameter TRXSCALE = 28,          // 100M / 28 / 115200 = 31 (5bit)  --If serial communications are not working then try adjusting this number.
+  parameter RATE = 115200           // maximum & base rate
+`endif
 )(
+  // system signals
   input  wire        bf_clock,
+  // logic analyzer signals
   input  wire        extClockIn,
   output wire        extClockOut,
   input  wire        extTriggerIn,
@@ -59,11 +62,12 @@ module Logic_Sniffer #(
   output wire        dataReady,
   output wire        armLEDnn,
   output wire        triggerLEDnn,
+  // host interface
 `ifdef COMM_TYPE_SPI
-  output wire        miso,
-  input  wire        mosi,
-  input  wire        sclk,
-  input  wire        cs
+  input  wire        spi_sclk,
+  input  wire        spi_cs_n,
+  input  wire        spi_mosi,
+  output wire        spi_miso
 `else
   input  wire        rx,
   output wire        tx
@@ -71,6 +75,7 @@ module Logic_Sniffer #(
 );
 
 wire extReset = 1'b0;
+
 wire [39:0] cmd;
 wire [31:0] sram_wrdata;
 wire [35:0] sram_rddata; 
@@ -116,18 +121,18 @@ outbuf io_indata [31:16] (.pad(indata[31:16]), .clk(clock), .outsig(test_pattern
 spi_slave spi_slave (
   .clock      (clock), 
   .extReset   (extReset),
-  .sclk       (sclk), 
-  .cs         (cs),
-  .mosi       (mosi),
   .dataIn     (stableInput),
   .send       (send), 
   .send_data  (sram_rddata[31:0]), 
   .send_valid (sram_rdvalid),
-  // outputs...
   .cmd        (cmd),
   .execute    (execute), 
   .busy       (busy),
-  .miso       (miso)
+  // SPI signals
+  .sclk       (spi_sclk), 
+  .cs         (spi_cs_n),
+  .mosi       (spi_mosi),
+  .miso       (spi_miso)
 );
 
 `else 
