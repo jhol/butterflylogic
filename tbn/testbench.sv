@@ -36,8 +36,8 @@ Logic_Sniffer sniffer (
   .armLEDnn      (armLEDnn),
   .triggerLEDnn  (triggerLEDnn),
   // SPI signals
-  .spi_sclk      (spi_sclk),
   .spi_cs_n      (spi_cs_n),
+  .spi_sclk      (spi_sclk),
   .spi_miso      (spi_miso),
   .spi_mosi      (spi_mosi)
 );
@@ -45,8 +45,8 @@ Logic_Sniffer sniffer (
 spi_master #(
   .PERIOD (100)
 ) spi_master (
-  .sclk (spi_sclk),
   .cs_n (spi_cs_n),
+  .sclk (spi_sclk),
   .miso (spi_miso),
   .mosi (spi_mosi)
 );
