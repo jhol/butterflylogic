@@ -5,89 +5,70 @@
 //
 module testbench();
 
-reg bf_clock;
-initial bf_clock=0;
-always
-begin
-  #10;
-  bf_clock = !bf_clock;
-end
+// system clock source
+logic bf_clock;
+initial    bf_clock = 1'b0;
+always #10 bf_clock = ~bf_clock;
 
-reg spi_sclk, spi_mosi, spi_cs_n;
-initial begin spi_sclk=0; spi_mosi=1'b0; spi_cs_n=1'b1; end
+// SPI signals
+wire spi_sclk;
+wire spi_cs_n;
+wire spi_mosi;
+wire spi_miso;
 
-wire [31:0] indata; // Since indata can drive data, must create a "bus" assignment.
-reg [31:0] indata_reg;
-reg indata_oe;
-initial
-begin 
+//
+// Instantiate the Logic Sniffer...
+//
+logic        extClockIn   = 1'b0;
+logic        extTriggerIn = 1'b0;
+wire  [31:0] indata; // Since indata can drive data, must create a "bus" assignment.
+logic [31:0] indata_reg;
+logic        indata_oe;
+initial begin 
   indata_reg = 32'h0;
   indata_oe = 1'b0; 
   #10;
   indata_oe = 1'b1; // turn on output enable
 end
+
 assign indata = (indata_oe) ? indata_reg : 32'hzzzzzzzz;
 
-
-
-//
-// Instantiate the Logic Sniffer...
-//
-wire extClockIn = 1'b0;
-wire extTriggerIn = 1'b0;
-
 Logic_Sniffer sniffer (
-  .bf_clock(bf_clock),
-  .extClockIn(extClockIn),
-  .extClockOut(extClockOut),
-  .extTriggerIn(extTriggerIn),
-  .extTriggerOut(extTriggerOut),
-  .indata(indata),
-  .spi_miso(spi_miso), 
-  .spi_mosi(spi_mosi), 
-  .spi_sclk(spi_sclk), 
-  .spi_cs_n(spi_cs_n),
-  .dataReady(dataReady),
-  .armLEDnn(armLEDnn),
-  .triggerLEDnn(triggerLEDnn));
+  // system signals
+  .bf_clock      (bf_clock),
+  // logic analyzer signals
+  .extClockIn    (extClockIn),
+  .extClockOut   (extClockOut),
+  .extTriggerIn  (extTriggerIn),
+  .extTriggerOut (extTriggerOut),
+  .indata        (indata),
+  .dataReady     (dataReady),
+  .armLEDnn      (armLEDnn),
+  .triggerLEDnn  (triggerLEDnn),
+  // SPI signals
+  .spi_cs_n      (spi_cs_n),
+  .spi_sclk      (spi_sclk),
+  .spi_miso      (spi_miso),
+  .spi_mosi      (spi_mosi)
+);
 
-
-//
-// PIC emulator...
-//
-reg wrbyte_req;
-reg [7:0] wrbyte_data;
-initial begin wrbyte_req=0; wrbyte_data=0; end
-always @(posedge wrbyte_req)
-begin : temp
-  integer i;
-  i = 7;
-  spi_cs_n = 0;
-  #100;
-  repeat (8) 
-    begin 
-      spi_sclk = 0; spi_mosi = wrbyte_data[i]; i=i-1; #50;
-      spi_sclk = 1; #50;
-    end
-  spi_sclk = 0;
-  spi_mosi = 0;
-  #100;
-  spi_cs_n = 1;
-  #100;
-  wrbyte_req = 0;
-end
-
+spi_master #(
+  .PERIOD (100)
+) spi_master (
+  .cs_n (spi_cs_n),
+  .sclk (spi_sclk),
+  .miso (spi_miso),
+  .mosi (spi_mosi)
+);
 
 //
 // Generate SPI test commands...
 //
-task write_cmd;
-input [7:0] value;
-integer i;
-begin 
-  wrbyte_req = 1;
-  wrbyte_data = value;
-  @(negedge wrbyte_req);
+task write_cmd (input logic [7:0] dmosi);
+  logic [7:0] dmiso;
+begin
+  spi_master.cycle (dmosi, dmiso);
+  $display ("%t: SPI: (0x%02x) '%c'",$realtime, dmiso, dmiso);
 end
 endtask
 
@@ -96,7 +77,7 @@ endtask
 task wait4fpga;
 begin
   while (!dataReady) @(posedge dataReady);
-  while (dataReady) write_cmd(8'h7F);
+  while ( dataReady) write_cmd(8'h7F);
 end
 endtask
 
@@ -315,40 +296,7 @@ begin
 end
 `endif
 
-reg [7:0] miso_byte = 0;
-integer miso_count = 0;
-always @(posedge spi_sclk)
-begin
-  #50;
-  if (spi_cs_n) 
-    begin
-      miso_byte=8'hzz; 
-      miso_count=0;
-    end
-  else 
-    begin
-      miso_byte = {miso_byte[6:0],spi_miso};
-      miso_count=miso_count+1;
-    end
+// periodic time printouts
+always #10000 $display ("%t",$realtime);
 
-  if (miso_count<8)
-    $display ("%t: wr=%0d   rd=%0d",$realtime, spi_mosi, spi_miso);
-  else if ((miso_byte>=32) && (miso_byte<128))
-    begin
-      $display ("%t: wr=%0d   rd=%0d (0x%02x) '%c'",$realtime, spi_mosi, spi_miso, miso_byte, miso_byte);
-      miso_count=0;
-    end
-  else
-    begin
-      $display ("%t: wr=%0d   rd=%0d (0x%02x)",$realtime, spi_mosi, spi_miso, miso_byte);
-      miso_count=0;
-    end
-end
-
-always #10000
-begin
-  $display ("%t",$realtime);
-end
 endmodule
-
-
