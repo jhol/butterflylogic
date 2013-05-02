@@ -7,7 +7,6 @@ RTL_232 = rtl/prescaler.v       \
           rtl/eia232.v
 RTL     = rtl/async_fifo.v      \
           rtl/stubs.v           \
-          rtl/BRAM6k9bit.v      \
           rtl/clockman.v        \
           rtl/controller.v      \
           rtl/core.v            \

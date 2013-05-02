@@ -42,17 +42,23 @@ module sram_interface #(
   parameter MSZ = 6*1024,       // size (6K x 36bit)
 //parameter MAW = $clog2(MSZ),  // address width (13bit => 8K)
   parameter MAW = 13,  // address width (13bit => 8K)
-  parameter MDW = 36            // data width
+  parameter MDW = 32            // data width
 )(
+  // system signals
   input  wire           clk,
+  input  wire           rst,
+  // configuration/control signals
   input  wire           wrFlags,
   input  wire     [3:0] config_data,
+  // write interface
   input  wire           write,
   input  wire           lastwrite,
-  input  wire           read,
   input  wire [MDW-1:0] wrdata,
-  output wire [MDW-1:0] rddata,
-  output reg      [3:0] rdvalid
+  // read interface
+  input  wire           rd_ready,
+  output reg            rd_valid,
+  output reg      [3:0] rd_keep,
+  output reg  [MDW-1:0] rd_data
 );
 
 //
@@ -69,7 +75,7 @@ reg [3:0] validmask, next_validmask;
 
 reg [3:0] clkenb, next_clkenb;
 reg [MAW-1:0] address, next_address;
-reg [3:0] next_rdvalid;
+reg [3:0] next_rd_keep;
 
 wire maxaddr = &address[MAW-1-2:0] & address[MAW-1]; // detect 0x17FF
 wire addrzero = ~|address;
@@ -85,7 +91,8 @@ begin
   validmask = 4'hF;
   clkenb = 4'b1111;
   address = 0;
-  rdvalid = 1'b0;
+  rd_keep = 4'b0000;
+  rd_valid = 1'b0;
 end
 always @ (posedge clk)
 begin
@@ -94,7 +101,8 @@ begin
   validmask <= next_validmask;
   clkenb    <= next_clkenb;
   address   <= next_address;
-  rdvalid   <= next_rdvalid;
+  rd_keep   <= next_rd_keep;
+  rd_valid  <=|next_rd_keep;
 end
 
 
@@ -106,7 +114,7 @@ begin
 
   next_clkenb = clkenb;
   next_address = address;
-  next_rdvalid = clkenb & validmask;
+  next_rd_keep = clkenb & validmask;
 
   //
   // Setup architecture of RAM based on which groups are enabled/disabled.
@@ -141,7 +149,7 @@ begin
   // before changing clock enables.  Client sees no difference. However, 
   // it'll eventally allow easier streaming of data to the client...
   //
-  casex ({write && !lastwrite, read})
+  casex ({write && !lastwrite, rd_ready})
     2'b1x : // inc clkenb/address on all but last write (to avoid first read being bogus)...
       begin
         next_clkenb = 4'b1111;
@@ -191,33 +199,54 @@ begin
   endcase
 end
 
-
 //
 // Instantiate RAM's (each BRAM6kx9bit in turn instantiates three 2kx9's block RAM's)...
 //
-wire [MAW-1:0] #1 ram_ADDR = address;
-wire #1 ram_WE = write;
-BRAM6k9bit RAMBG0(
-  .CLK(clk), .WE(ram_WE), .EN(clkenb[0]), .ADDR(ram_ADDR),
-  .DIN(ram_datain[7:0]), .DOUT(ram_dataout[7:0]),
-  .DINP(ram_datain[32]), .DOUTP(ram_dataout[32]));
+`define XC3S250E
+`ifdef XC3S250E
 
-BRAM6k9bit RAMBG1(
-  .CLK(clk), .WE(ram_WE), .EN(clkenb[1]), .ADDR(ram_ADDR),
-  .DIN(ram_datain[15:8]), .DOUT(ram_dataout[15:8]),
-  .DINP(ram_datain[33]), .DOUTP(ram_dataout[33]));
+genvar i;
+generate
+for (i=0; i<4; i=i+1) begin : mem
+  // byte wide memory array
+  reg [8-1:0] mem2 [0:2048-1];
+  reg [8-1:0] mem1 [0:2048-1];
+  reg [8-1:0] mem0 [0:2048-1];
+  reg [8-1:0] rd_data2;
+  reg [8-1:0] rd_data1;
+  reg [8-1:0] rd_data0;
+  reg [12:11] adr_reg;
+  // write access
+  always @ (posedge clk)  if (write & clkenb[i] &  address[12]               ) mem2 [address[10:0]] <= ram_datain[i*8+:8];
+  always @ (posedge clk)  if (write & clkenb[i] & ~address[12] &  address[11]) mem1 [address[10:0]] <= ram_datain[i*8+:8];
+  always @ (posedge clk)  if (write & clkenb[i] & ~address[12] & ~address[11]) mem0 [address[10:0]] <= ram_datain[i*8+:8];
+  // read access
+  always @ (posedge clk)  rd_data2 <= mem2 [address[10:0]];
+  always @ (posedge clk)  rd_data1 <= mem1 [address[10:0]];
+  always @ (posedge clk)  rd_data0 <= mem0 [address[10:0]];
+  // multiplexer
+  always @ (posedge clk) adr_reg <= address[12:11];
+  always @ (*)
+  rd_data [i*8+:8] = adr_reg[12] ? rd_data2 : (adr_reg[11] ? rd_data1 : rd_data0);
+end
+endgenerate
 
-BRAM6k9bit RAMBG2(
-  .CLK(clk), .WE(ram_WE), .EN(clkenb[2]), .ADDR(ram_ADDR),
-  .DIN(ram_datain[23:16]), .DOUT(ram_dataout[23:16]),
-  .DINP(ram_datain[34]), .DOUTP(ram_dataout[34]));
+`else
 
-BRAM6k9bit RAMBG3(
-  .CLK(clk), .WE(ram_WE), .EN(clkenb[3]), .ADDR(ram_ADDR),
-  .DIN(ram_datain[31:24]), .DOUT(ram_dataout[31:24]),
-  .DINP(ram_datain[35]), .DOUTP(ram_dataout[35]));
+genvar i;
+generate
+for (i=0; i<4; i=i+1) begin : mem
+  // byte wide memory array
+  reg [8-1:0] mem [0:MSZ-1];
+  // write access
+  always @ (posedge clk)
+  if (write & clkenb[i]) mem [address] <= ram_datain[i*8+:8];
+  // read access
+  always @ (posedge clk)
+  rd_data [i*8+:8] <= mem [address];
+end
+endgenerate
 
-assign rddata = ram_dataout;
+`endif
 
 endmodule
-

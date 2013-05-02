@@ -78,7 +78,7 @@ wire extReset = 1'b0;
 
 wire [39:0] cmd;
 wire [31:0] sram_wrdata;
-wire [35:0] sram_rddata; 
+wire [31:0] sram_rddata; 
 wire  [3:0] sram_rdvalid;
 wire [31:0] stableInput;
 
@@ -123,7 +123,7 @@ spi_slave spi_slave (
   .extReset   (extReset),
   .dataIn     (stableInput),
   .send       (send), 
-  .send_data  (sram_rddata[31:0]), 
+  .send_data  (sram_rddata), 
   .send_valid (sram_rdvalid),
   .cmd        (cmd),
   .execute    (execute), 
@@ -192,16 +192,20 @@ core #(
 // Instantiate the memory interface...
 //
 sram_interface sram_interface (
+  // system signals
   .clk          (clock),
+  // configuration/control signals
   .wrFlags      (wrFlags), 
   .config_data  (config_data[5:2]),
+  // write interface
   .write        (write),
   .lastwrite    (lastwrite),
-  .read         (read),
-  .wrdata       ({4'h0,sram_wrdata}),
-  // outputs...
-  .rddata       (sram_rddata),
-  .rdvalid      (sram_rdvalid)
+  .wrdata       (sram_wrdata),
+  // read interface
+  .rd_ready     (read),
+  .rd_valid     (),
+  .rd_keep      (sram_rdvalid),
+  .rd_data      (sram_rddata)
 );
 
 endmodule
