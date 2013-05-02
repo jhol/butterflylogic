@@ -86,7 +86,6 @@ end
 
 always @*
 begin
-  #1;
   next_divider = divider;
   next_counter = counter;
   next_validOut = FALSE;

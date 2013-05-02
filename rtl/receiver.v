@@ -84,7 +84,7 @@ begin
   execute   <= next_execute;
 end
 
-always #1
+always
 begin
   next_state = state;
   next_counter = counter;

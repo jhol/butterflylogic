@@ -72,7 +72,6 @@ reg [7:0] dbyte;
 reg disabled;
 always @*
 begin
-  #1;
   dbyte = 0;
   disabled = 0;
   case (bytesel)
@@ -99,7 +98,6 @@ end
 
 always @*
 begin
-  #1;
   next_dly_sclk = sclk;
   next_bits = bits;
   next_byteDone = byteDone;
@@ -166,7 +164,6 @@ end
 
 always @*
 begin
-  #1;
   next_state = state;
   next_sampled_send_data = sampled_send_data;
   next_sampled_send_valid = sampled_send_valid;

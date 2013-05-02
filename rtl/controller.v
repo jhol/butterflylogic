@@ -103,7 +103,6 @@ end
 // FSM to control the controller action
 always @*
 begin
-  #1;
   next_state = state;
   next_counter = counter;
   next_memoryWrite = 1'b0;

@@ -88,7 +88,6 @@ end
 
 always @*
 begin
-  #1;
   next_bitcount = bitcount;
   next_spiByte = spiByte;
   next_byteready = 1'b0;
@@ -132,7 +131,6 @@ end
 
 always @*
 begin
-  #1;
   next_state = state;
   next_bytecount = bytecount;
   next_opcode = opcode;

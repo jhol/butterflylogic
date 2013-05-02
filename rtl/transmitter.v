@@ -78,7 +78,7 @@ reg writeByte;
 //
 reg [7:0] byte;
 reg disabled;
-always #1
+always
 begin
   byte = 0;
   disabled = 0;
@@ -102,7 +102,7 @@ begin
   txBuffer <= next_txBuffer;
 end
 
-always #1
+always
 begin
   next_bits = bits;
   next_byteDone = byteDone;
@@ -152,7 +152,7 @@ end else begin
   paused                 <= next_paused;
 end
 
-always #1
+always
 begin
   next_state = state;
   next_sampled_wrdata = sampled_wrdata;

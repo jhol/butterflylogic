@@ -1,5 +1,3 @@
-
-
 module BRAM6k9bit(CLK, ADDR, WE, EN, DIN, DINP, DOUT, DOUTP);
 input CLK;
 input WE;
@@ -16,7 +14,6 @@ wire ram0_DOUTP, ram1_DOUTP, ram2_DOUTP;
 reg [3:0] ram_EN;
 always @*
 begin
-  #1;
   ram_EN = 0;
   ram_EN[ADDR[12:11]] = EN;
 end
@@ -33,7 +30,6 @@ reg [7:0] DOUT;
 reg DOUTP;
 always @*
 begin
-  #1;
   DOUT = 8'h0;
   DOUTP = 1'b0;
   case (dly_ADDR)

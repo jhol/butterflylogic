@@ -52,7 +52,7 @@ end else begin
   scaled  <= next_scaled;
 end
 
-always #1
+always
 begin
   next_scaled = 1'b0;
   case (div) 

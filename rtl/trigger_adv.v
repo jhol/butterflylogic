@@ -393,7 +393,6 @@ reg [7:0] wrenb_range_edge;
 reg [15:0] wrenb_state;
 always @*
 begin
-  #1;
   wrenb_term = 0;
   wrenb_range_edge = 0;
   wrenb_state = 0;

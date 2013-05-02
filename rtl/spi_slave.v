@@ -124,7 +124,6 @@ end
 
 always @*
 begin
-  #1;
   next_query_id = 1'b0; 
   next_query_metadata = 1'b0;
   next_query_dataIn = 1'b0;

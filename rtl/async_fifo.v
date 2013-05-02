@@ -339,7 +339,6 @@ always @ (posedge clk) data_out <= next_data_out;
 
 always @(*)
 begin
-  #1;
   next_rdptr = rdptr;
   next_data_out = {(FDW-1+1){data_avail}} & ram_rddata;
   next_data_valid = 1'b0;

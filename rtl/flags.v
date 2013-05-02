@@ -49,7 +49,6 @@ flags_reg <= next_flags_reg;
 
 always @*
 begin
-  #1;
   next_flags_reg = (wrFlags) ? config_data : flags_reg;
   if (finish_now) next_flags_reg[8] = 1'b0;
 end

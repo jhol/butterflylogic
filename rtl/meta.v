@@ -97,7 +97,6 @@ end
 
 always @*
 begin
-  #1;
   next_state = state;
   next_metasel = metasel;
 

@@ -165,7 +165,6 @@ end
 
 always @*
 begin
-  #1;
   next_state = state;
   next_counter = counter;
   next_match = FALSE;

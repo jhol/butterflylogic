@@ -74,7 +74,7 @@ begin
   disabledGroupsReg <= next_disabledGroupsReg;
 end
 
-always #1
+always
 begin
   next_id = 1'b0;
   next_xon = 1'b0;
