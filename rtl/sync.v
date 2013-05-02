@@ -29,106 +29,107 @@
 // 12/29/2010 - Verilog Version + cleanups created by Ian Davis - mygizmos.org
 //              Revised to carefully avoid any cross-connections between indata
 //              bits from the I/O's until a couple flops have sampled everything.
-//              Also moved testcount & numberScheme selects from top level here.
+//              Also moved tc & numberScheme selects from top level here.
 // 
 
 `timescale 1ns/100ps
 
-module sync (
-  input  wire        clock,
-  input  wire [31:0] indata,
-  input  wire        intTestMode,
-  input  wire        numberScheme,
-  input  wire        filter_mode,
-  input  wire        demux_mode,
-  input  wire        falling_edge,
-  output wire [31:0] outdata
+module sync #(
+  // implementation options
+  parameter IMP_TEST   = 1,
+  parameter IMP_FILTER = 1,
+  parameter IMP_DDR    = 1,
+  // data width
+  parameter DW = 32
+)(
+  // configuration and control signals
+  input  wire          intTestMode,
+  input  wire          numberScheme,
+  input  wire          filter_mode,
+  input  wire          demux_mode,
+  input  wire          falling_edge,
+  // input stream
+  input  wire          sti_clk,
+  input  wire          sti_rst,
+  input  wire [DW-1:0] indata,
+  // output stream
+  output wire [DW-1:0] outdata
 );
 
 //
 // Sample config flags (for better synthesis)...
 //
-dly_signal sampled_intTestMode_reg (clock, intTestMode, sampled_intTestMode);
-dly_signal sampled_numberScheme_reg (clock, numberScheme, sampled_numberScheme);
+dly_signal sampled_intTestMode_reg  (sti_clk, intTestMode , sampled_intTestMode );
+dly_signal sampled_numberScheme_reg (sti_clk, numberScheme, sampled_numberScheme);
 
 //
 // Synchronize indata guarantees use of iob ff on spartan 3 (as filter and demux do)
 //
-wire [31:0] sync_indata, sync_indata180;
-ddr_inbuf inbuf (clock, indata, sync_indata, sync_indata180);
+wire [DW-1:0] indata_p, indata_n;
+ddr_inbuf inbuf (sti_clk, indata, indata_p, indata_n);
 
 //
-// Internal test mode.  Put aa 8-bit test pattern munged in 
+// Internal test mode.  Put a 8-bit test pattern munged in 
 // different ways onto the 32-bit input...
 //
-reg [7:0] testcount, next_testcount;
-initial testcount=0;
-always @ (posedge clock) testcount <= testcount + 'b1;
+reg [7:0] tc;
+initial tc=0;
+always @ (posedge sti_clk) tc <= tc + 'b1;
 
-wire [7:0] testcount1 = {
-  testcount[0],testcount[1],testcount[2],testcount[3],
-  testcount[4],testcount[5],testcount[6],testcount[7]};
-
-wire [7:0] testcount2 = {
-  testcount[3],testcount[2],testcount[1],testcount[0],
-  testcount[4],testcount[5],testcount[6],testcount[7]};
-
-wire [7:0] testcount3 = {
-  testcount[3],testcount[2],testcount[1],testcount[0],
-  testcount[7],testcount[6],testcount[5],testcount[4]};
+wire [7:0] tc1 = {tc[0],tc[1],tc[2],tc[3],tc[4],tc[5],tc[6],tc[7]};
+wire [7:0] tc2 = {tc[3],tc[2],tc[1],tc[0],tc[4],tc[5],tc[6],tc[7]};
+wire [7:0] tc3 = {tc[3],tc[2],tc[1],tc[0],tc[7],tc[6],tc[5],tc[4]};
 
 wire [31:0] itm_count;
 (* equivalent_register_removal = "no" *)
-dly_signal #(32) sampled_testcount_reg (clock, {testcount3,testcount2,testcount1,testcount}, itm_count);
+dly_signal #(DW) sampled_tc_reg (sti_clk, {tc3,tc2,tc1,tc}, itm_count);
 
-//wire [31:0] itm_indata    = (sampled_intTestMode) ? { testcount3, testcount2, testcount1, testcount} : sync_indata   ;
-//wire [31:0] itm_indata180 = (sampled_intTestMode) ? {~testcount3,~testcount2,~testcount1,~testcount} : sync_indata180;
-wire [31:0] itm_indata    = (sampled_intTestMode) ?  itm_count : sync_indata   ;
-wire [31:0] itm_indata180 = (sampled_intTestMode) ? ~itm_count : sync_indata180;
+wire [DW-1:0] itm_indata_p = (sampled_intTestMode) ?  itm_count : indata_p;
+wire [DW-1:0] itm_indata_n = (sampled_intTestMode) ? ~itm_count : indata_n;
 
+//
+// posedge resynchronization and delay of input data
 
+reg [DW-1:0] dly_indata_p;
+reg [DW-1:0] dly_indata_n;
+
+always @(posedge sti_clk)
+begin
+  dly_indata_p <= indata_p;
+  dly_indata_n <= indata_n;
+end
 
 //
 // Instantiate demux.  Special case for number scheme mode, since demux upper bits we have
 // the final full 32-bit shouldn't be swapped.  So it's preswapped here, to "undo" the final 
 // numberscheme on output...
 //
-wire [31:0] demuxL_indata; 
-demux demuxL (
-  .clock     (clock),
-  .indata    (itm_indata[15:0]), 
-  .indata180 (itm_indata180[15:0]), 
-  .outdata   (demuxL_indata)
-);
+// Demultiplexes 16 input channels into 32 output channels,
+// thus doubling the sampling rate for those channels.
+//
 
-wire [31:0] demuxH_indata; 
-demux demuxH (
-  .clock     (clock),
-  .indata    (itm_indata[31:16]), 
-  .indata180 (itm_indata180[31:16]), 
-  .outdata   (demuxH_indata)
-);
-
-wire [31:0] demux_indata = (sampled_numberScheme) ? {demuxH_indata[15:0],demuxH_indata[31:16]} : demuxL_indata;
+wire [DW-1:0] demux_indata = (sampled_numberScheme) ? {indata_p[DW/2+:DW/2], dly_indata_n[DW/2+:DW/2]}
+                                                    : {indata_p[ 0  +:DW/2], dly_indata_n[ 0  +:DW/2]};
 
 //
-// Instantiate noise filter...
+// Fast 32 channel digital noise filter using a single LUT function for each
+// individual channel. It will filter out all pulses that only appear for half
+// a clock cycle. This way a pulse has to be at least 5-10ns long to be accepted
+// as valid. This is sufficient for sample rates up to 100MHz.
 //
-wire [31:0] filtered_indata; 
-filter filter (
-  .clock     (clock), 
-  .indata    (itm_indata),
-  .indata180 (itm_indata180),
-  .outdata   (filtered_indata)
-);
+
+reg [DW-1:0] filtered_indata; 
+
+always @(posedge sti_clk) 
+filtered_indata <= (outdata | dly_indata_p | indata_p) & dly_indata_n;
 
 //
 // Another pipeline step for indata selector to not decrease maximum clock rate...
 //
 reg [1:0] select;
-reg [31:0] selectdata;
+reg [DW-1:0] selectdata;
 
-always @(posedge clock) 
+always @(posedge sti_clk) 
 begin
   // IED - better starting point for synth tools...
   if (demux_mode)       select <= 2'b10;
@@ -136,8 +137,8 @@ begin
   else                  select <= {1'b0,falling_edge};
   // 4:1 mux...
   case (select) 
-    2'b00 : selectdata <= itm_indata;
-    2'b01 : selectdata <= itm_indata180;
+    2'b00 : selectdata <= itm_indata_p;
+    2'b01 : selectdata <= itm_indata_n;
     2'b10 : selectdata <= demux_indata;
     2'b11 : selectdata <= filtered_indata;
   endcase

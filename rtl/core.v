@@ -220,7 +220,7 @@ flags flags(
 // Capture input relative to sampleClock...
 //
 sync sync(
-  .clock        (sampleClock),
+  .sti_clk      (sampleClock),
   .indata       (indata),
   .intTestMode  (intTestMode),
   .numberScheme (numberScheme),

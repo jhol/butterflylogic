@@ -13,8 +13,6 @@ RTL     = rtl/async_fifo.v      \
           rtl/data_align.v      \
           rtl/decoder.v         \
           rtl/delay_fifo.v      \
-          rtl/demux.v           \
-          rtl/filter.v          \
           rtl/flags.v           \
           rtl/iomodules.v       \
           rtl/Logic_Sniffer.v   \
