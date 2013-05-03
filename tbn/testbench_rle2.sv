@@ -21,17 +21,17 @@ wire spi_miso;
 //
 logic        extClockIn   = 1'b0;
 logic        extTriggerIn = 1'b0;
-wire  [31:0] indata; // Since indata can drive data, must create a "bus" assignment.
-logic [31:0] indata_reg;
-logic        indata_oe;
+wire  [31:0] extData; // Since extData can drive data, must create a "bus" assignment.
+logic [31:0] extData_reg;
+logic        extData_oe;
 initial begin 
-  indata_reg = 32'h0;
-  indata_oe = 1'b0; 
+  extData_reg = 32'h0;
+  extData_oe = 1'b0; 
   #10;
-  indata_oe = 1'b1; // turn on output enable
+  extData_oe = 1'b1; // turn on output enable
 end
 
-assign indata = (indata_oe) ? indata_reg : 32'hzzzzzzzz;
+assign extData = (extData_oe) ? extData_reg : 32'hzzzzzzzz;
 
 Logic_Sniffer sniffer (
   // system signals
@@ -41,7 +41,7 @@ Logic_Sniffer sniffer (
   .extClockOut   (extClockOut),
   .extTriggerIn  (extTriggerIn),
   .extTriggerOut (extTriggerOut),
-  .indata        (indata),
+  .extData       (extData),
   .dataReady     (dataReady),
   .armLEDnn      (armLEDnn),
   .triggerLEDnn  (triggerLEDnn),
@@ -146,7 +146,7 @@ begin
 
         repeat (rvalue) @(posedge sniffer.core.sampleClock);
         if (rvalue<4) $display ("%t: --%0d--", $realtime, rvalue);
-        indata_reg[16] = 0;
+        extData_reg[16] = 0;
 
         if (({$random} % 10)<5)
           rvalue = {$random} % 20;
@@ -155,7 +155,7 @@ begin
 
         repeat (rvalue) @(posedge sniffer.core.sampleClock);
         if (rvalue<4) $display ("%t: --%0d--", $realtime, rvalue);
-        indata_reg[16] = 1;
+        extData_reg[16] = 1;
       end
   join
   $finish;

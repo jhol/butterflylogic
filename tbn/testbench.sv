@@ -18,10 +18,10 @@ wire spi_miso;
 //
 logic        extClockIn   = 1'b0;
 logic        extTriggerIn = 1'b0;
-wire  [31:0] indata;
-logic [31:0] indata_reg;
+wire  [31:0] extData;
+logic [31:0] extData_reg;
 
-assign indata = indata_reg;
+assign extData = extData_reg;
 
 Logic_Sniffer sniffer (
   // system signals
@@ -31,7 +31,7 @@ Logic_Sniffer sniffer (
   .extClockOut   (extClockOut),
   .extTriggerIn  (extTriggerIn),
   .extTriggerOut (extTriggerOut),
-  .indata        (indata),
+  .extData       (extData),
   .dataReady     (dataReady),
   .armLEDnn      (armLEDnn),
   .triggerLEDnn  (triggerLEDnn),
@@ -163,7 +163,7 @@ begin
   $display ("%t: Read & Delay Count...", $realtime);
   write_longcmd (8'h81, 32'h000f000f);
 
-  indata_reg = 0;
+  extData_reg = 0;
   fork
     begin
       $display ("%t: Starting 5%% buffer prefetch test...", $realtime);
@@ -183,18 +183,18 @@ begin
       repeat (1000)
         begin
           repeat (5) @(posedge bf_clock); 
-          indata_reg[2] = 1;
+          extData_reg[2] = 1;
           repeat (5) @(posedge bf_clock); 
-          indata_reg[2] = 0;
+          extData_reg[2] = 0;
         end
     end
     begin
       repeat (5000)
         begin
           @(posedge bf_clock);
-          indata_reg[7] = bf_clock;
+          extData_reg[7] = bf_clock;
           @(negedge bf_clock);
-          indata_reg[7] = bf_clock;
+          extData_reg[7] = bf_clock;
         end
     end
     begin
@@ -240,7 +240,7 @@ begin
     begin
       repeat (1) @(posedge bf_clock); 
       repeat (2000) begin
-        #5; indata_reg = indata_reg+1;
+        #5; extData_reg = extData_reg+1;
       end
     end
   join
@@ -253,7 +253,7 @@ endtask
 //
 initial
 begin
-  indata_reg = 0;
+  extData_reg = 0;
   #100;
 
   $display ("%t: Reset...", $realtime);

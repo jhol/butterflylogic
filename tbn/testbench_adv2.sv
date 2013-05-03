@@ -21,18 +21,18 @@ wire spi_miso;
 //
 logic        extClockIn   = 1'b0;
 logic        extTriggerIn = 1'b0;
-wire  [31:0] indata; // Since indata can drive data, must create a "bus" assignment.
-logic [31:0] indata_reg;
-logic        indata_oe;
+wire  [31:0] extData; // Since extData can drive data, must create a "bus" assignment.
+logic [31:0] extData_reg;
+logic        extData_oe;
 
 initial begin 
-  indata_reg = 32'h0;
-  indata_oe = 1'b0;
+  extData_reg = 32'h0;
+  extData_oe = 1'b0;
   #10;
-  indata_oe = 1'b1; // turn on output enable
+  extData_oe = 1'b1; // turn on output enable
 end
 
-assign indata = (indata_oe) ? indata_reg : 32'hzzzzzzzz;
+assign extData = (extData_oe) ? extData_reg : 32'hzzzzzzzz;
 
 Logic_Sniffer sniffer (
   // system signals
@@ -42,7 +42,7 @@ Logic_Sniffer sniffer (
   .extClockOut   (extClockOut),
   .extTriggerIn  (extTriggerIn),
   .extTriggerOut (extTriggerOut),
-  .indata        (indata),
+  .extData       (extData),
   .dataReady     (dataReady),
   .armLEDnn      (armLEDnn),
   .triggerLEDnn  (triggerLEDnn),
@@ -294,8 +294,8 @@ endtask
 //
 // Lower value carry's are used directly.  Upper value carry's are 
 // inverted to produce the following tests:
-//    indata >= lower
-//    indata <= upper 
+//    extData >= lower
+//    extData <= upper 
 //
 // Individual CLB LUT RAM's are configured to XOR between input
 // on LUT addr 0 & the target value.
@@ -303,7 +303,7 @@ endtask
 // ------------------------------------------------------------------
 //
 // It is possible for this to range check a non-contiguous value.
-// ie: range check on indata bits 0, 7, 9, 11, 15 & no others.
+// ie: range check on extData bits 0, 7, 9, 11, 15 & no others.
 //
 // To do this, the disused range bit CLB's must be configured to NOP
 // and not disturb the fast-carry-chain connecting them.
@@ -319,7 +319,7 @@ endtask
 //   Lower values:  ~(target-1)
 //   Upper values:  ~target
 //
-// Yields a hit if: (upper >= indata >= lower)
+// Yields a hit if: (upper >= extData >= lower)
 //
 // ------------------------------------------------------------------
 //
@@ -327,11 +327,11 @@ endtask
 //    lower=0x10000000.     value-to-program-for-lower=0xF0000000 = ~(0x10000000-1)
 //    upper=0xE0000000.     value-to-program-for-upper=0x1FFFFFFF = ~(0xE0000000)
 //
-//    If indata=0x00000100, then lower misses.  No match.  Miss.
-//    If indata=0x0FFFFFFF, then lower misses (0x0FFFFFFF+0xF0000000 = no carry).  Miss.
-//    If indata=0x10000000, then lower hits (0x1000000+0xF000000 = lower-carry) & upper hits.  Match!
-//    If indata=0xE0000000, then lower hits & upper hits.  Match!
-//    If indata=0xE0000001, then lower hits & upper misses (0xE0000001+0x1FFFFFFF = upper-carry).  Miss!
+//    If extData=0x00000100, then lower misses.  No match.  Miss.
+//    If extData=0x0FFFFFFF, then lower misses (0x0FFFFFFF+0xF0000000 = no carry).  Miss.
+//    If extData=0x10000000, then lower hits (0x1000000+0xF000000 = lower-carry) & upper hits.  Match!
+//    If extData=0xE0000000, then lower hits & upper hits.  Match!
+//    If extData=0xE0000001, then lower hits & upper misses (0xE0000001+0x1FFFFFFF = upper-carry).  Miss!
 //
 parameter RANGE_XOR0 = 16'hAAAA;
 parameter RANGE_XOR1 = 16'h5555;
@@ -442,7 +442,7 @@ endtask
 int i;
 initial
 begin
-  indata_reg = 0;
+  extData_reg = 0;
   #100;
 
   $display ("%t: Reset...", $realtime);

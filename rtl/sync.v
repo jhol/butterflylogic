@@ -27,7 +27,7 @@
 //--------------------------------------------------------------------------------
 //
 // 12/29/2010 - Verilog Version + cleanups created by Ian Davis - mygizmos.org
-//              Revised to carefully avoid any cross-connections between indata
+//              Revised to carefully avoid any cross-connections between sti_data
 //              bits from the I/O's until a couple flops have sampled everything.
 //              Also moved tc & numberScheme selects from top level here.
 // 
@@ -51,7 +51,8 @@ module sync #(
   // input stream
   input  wire          sti_clk,
   input  wire          sti_rst,
-  input  wire [DW-1:0] indata,
+  input  wire [DW-1:0] sti_data_p,
+  input  wire [DW-1:0] sti_data_n,
   // output stream
   output wire [DW-1:0] outdata
 );
@@ -61,12 +62,6 @@ module sync #(
 //
 dly_signal sampled_intTestMode_reg  (sti_clk, intTestMode , sampled_intTestMode );
 dly_signal sampled_numberScheme_reg (sti_clk, numberScheme, sampled_numberScheme);
-
-//
-// Synchronize indata guarantees use of iob ff on spartan 3 (as filter and demux do)
-//
-wire [DW-1:0] indata_p, indata_n;
-ddr_inbuf inbuf (sti_clk, indata, indata_p, indata_n);
 
 //
 // Internal test mode.  Put a 8-bit test pattern munged in 
@@ -84,19 +79,19 @@ wire [31:0] itm_count;
 (* equivalent_register_removal = "no" *)
 dly_signal #(DW) sampled_tc_reg (sti_clk, {tc3,tc2,tc1,tc}, itm_count);
 
-wire [DW-1:0] itm_indata_p = (sampled_intTestMode) ?  itm_count : indata_p;
-wire [DW-1:0] itm_indata_n = (sampled_intTestMode) ? ~itm_count : indata_n;
+wire [DW-1:0] itm_sti_data_p = (sampled_intTestMode) ?  itm_count : sti_data_p;
+wire [DW-1:0] itm_sti_data_n = (sampled_intTestMode) ? ~itm_count : sti_data_n;
 
 //
 // posedge resynchronization and delay of input data
 
-reg [DW-1:0] dly_indata_p;
-reg [DW-1:0] dly_indata_n;
+reg [DW-1:0] dly_sti_data_p;
+reg [DW-1:0] dly_sti_data_n;
 
 always @(posedge sti_clk)
 begin
-  dly_indata_p <= indata_p;
-  dly_indata_n <= indata_n;
+  dly_sti_data_p <= sti_data_p;
+  dly_sti_data_n <= sti_data_n;
 end
 
 //
@@ -108,8 +103,8 @@ end
 // thus doubling the sampling rate for those channels.
 //
 
-wire [DW-1:0] demux_indata = (sampled_numberScheme) ? {indata_p[DW/2+:DW/2], dly_indata_n[DW/2+:DW/2]}
-                                                    : {indata_p[ 0  +:DW/2], dly_indata_n[ 0  +:DW/2]};
+wire [DW-1:0] demux_sti_data = (sampled_numberScheme) ? {sti_data_p[DW/2+:DW/2], dly_sti_data_n[DW/2+:DW/2]}
+                                                      : {sti_data_p[ 0  +:DW/2], dly_sti_data_n[ 0  +:DW/2]};
 
 //
 // Fast 32 channel digital noise filter using a single LUT function for each
@@ -118,13 +113,13 @@ wire [DW-1:0] demux_indata = (sampled_numberScheme) ? {indata_p[DW/2+:DW/2], dly
 // as valid. This is sufficient for sample rates up to 100MHz.
 //
 
-reg [DW-1:0] filtered_indata; 
+reg [DW-1:0] filtered_sti_data; 
 
 always @(posedge sti_clk) 
-filtered_indata <= (outdata | dly_indata_p | indata_p) & dly_indata_n;
+filtered_sti_data <= (outdata | dly_sti_data_p | sti_data_p) & dly_sti_data_n;
 
 //
-// Another pipeline step for indata selector to not decrease maximum clock rate...
+// Another pipeline step for sti_data selector to not decrease maximum clock rate...
 //
 reg [1:0] select;
 reg [DW-1:0] selectdata;
@@ -137,10 +132,10 @@ begin
   else                  select <= {1'b0,falling_edge};
   // 4:1 mux...
   case (select) 
-    2'b00 : selectdata <= itm_indata_p;
-    2'b01 : selectdata <= itm_indata_n;
-    2'b10 : selectdata <= demux_indata;
-    2'b11 : selectdata <= filtered_indata;
+    2'b00 : selectdata <= itm_sti_data_p;
+    2'b01 : selectdata <= itm_sti_data_n;
+    2'b10 : selectdata <= demux_sti_data;
+    2'b11 : selectdata <= filtered_sti_data;
   endcase
 end
 

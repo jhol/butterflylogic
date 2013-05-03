@@ -10,44 +10,6 @@ assign #1 O=I;
 endmodule
 
 
-module BUFGMUX(O,I0,I1,S);
-input I0,I1,S;
-output O;
-assign #1 O = (S) ? I1 : I0;
-endmodule
-
-
-module DCM(CLKIN,PSCLK,PSEN,PSINCDEC,RST,CLK2X,CLK0,CLKFB);
-input CLKIN, PSCLK, PSEN, PSINCDEC, RST, CLKFB;
-output CLK2X, CLK0;
-
-assign #1 CLK0 = CLKIN;
-
-reg CLK2X;
-initial CLK2X=0;
-always @(posedge CLK0)
-begin
-  CLK2X = 1'b1;
-  #5;
-  CLK2X = 1'b0;
-  #5;
-  CLK2X = 1'b1;
-  #5;
-  CLK2X = 1'b0;
-end
-endmodule
-
-
-module ODDR2(Q,D0,D1,C0,C1);
-input D0,D1,C0,C1;
-output Q;
-reg Q;
-initial Q=0;
-always @(posedge C0) Q<=D0;
-always @(posedge C1) Q<=D1;
-endmodule
-
-
 module SRLC16E (A0,A1,A2,A3,CLK,CE,D,Q15,Q);
 input A0,A1,A2,A3,CLK,CE,D;
 output Q15,Q;

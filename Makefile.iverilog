@@ -1,3 +1,10 @@
+LIB     = lib/BUFGMUX.v         \
+          lib/DCM.v             \
+          lib/IDDR2.v           \
+          lib/IOBUF.v           \
+          lib/ODDR2.v           \
+          lib/glbl.v
+
 RTL_SPI = rtl/spi_receiver.v    \
           rtl/spi_slave.v       \
           rtl/spi_transmitter.v
@@ -7,14 +14,12 @@ RTL_232 = rtl/prescaler.v       \
           rtl/eia232.v
 RTL     = rtl/async_fifo.v      \
           rtl/stubs.v           \
-          rtl/clockman.v        \
           rtl/controller.v      \
           rtl/core.v            \
           rtl/data_align.v      \
           rtl/decoder.v         \
           rtl/delay_fifo.v      \
           rtl/flags.v           \
-          rtl/iomodules.v       \
           rtl/Logic_Sniffer.v   \
           rtl/meta.v            \
           rtl/regs.v            \
@@ -27,6 +32,7 @@ RTL     = rtl/async_fifo.v      \
           rtl/trigger_adv.v     \
           rtl/trigger.v         \
           $(RTL_SPI)
+
 TBN_MIX = tbn/testbench_adv2.sv \
           tbn/testbench_adv.sv  \
           tbn/testbench_rle2.sv \
@@ -58,8 +64,8 @@ rle2: tbn/testbench_rle2.sv $(RTL) $(TBN)
 	iverilog $(OPT) tbn/testbench_rle2.sv $(RTL) $(TBN) -o rle2.out
 	vvp -n -l rle2.log rle2.out
 
-full: tbn/testbench.sv $(RTL) $(TBN)
-	iverilog $(OPT) tbn/testbench.sv $(RTL) $(TBN) -o full.out
+full: tbn/testbench.sv $(RTL) $(TBN) $(LIB)
+	iverilog $(OPT) tbn/testbench.sv $(RTL) $(TBN) $(LIB) -o full.out
 	vvp -n -l full.log full.out
 
 divider: tbn/testbench.sv $(RTL) $(TBN)

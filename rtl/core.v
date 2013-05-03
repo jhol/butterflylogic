@@ -45,8 +45,11 @@ module core #(
   input  wire  [7:0] opcode,       // Configuration command from serial/SPI interface
   input  wire [31:0] config_data,
   input  wire        execute,      // opcode & config_data valid
-  input  wire [31:0] indata,       // Input sample data
-  input  wire        extClock,
+  // input stream
+  input  wire        sti_clk,
+  input  wire [31:0] sti_data_p,
+  input  wire [31:0] sti_data_n,
+  //
   input  wire        outputBusy,
   input  wire        extTriggerIn,
   output wire        sampleReady50,
@@ -57,10 +60,10 @@ module core #(
   output wire        memoryWrite,
   output wire        memoryLastWrite,
   output wire        extTriggerOut,
-  output wire        extClockOut,
   output reg         armLEDnn,
   output reg         triggerLEDnn,
   output wire        wrFlags,
+  output wire        extClock_mode,
   output wire        extTestMode
 );
 
@@ -90,36 +93,16 @@ wire [31:0] rle_data;
 wire arm_basic, arm_adv;
 wire arm = arm_basic | arm_adv;
 
-wire sampleClock; 
-
-
-//
-// Generate external clock reference...
-//
-`ifdef SLOW_EXTCLK
-
-reg [1:0] scount = 0;
-assign extClockOut = scount[1];
-always @ (posedge sampleClock)
-scount <= scount + 'b1;
-
-`else
-
-assign extClockOut = sampleClock;
-
-`endif
-
-
 //
 // Reset...
 //
 wire reset_core;
-wire reset_sample;
+wire sti_rst;
 wire resetCmd;
 wire reset = extReset | resetCmd;
 
-reset_sync reset_sync_core   (clock      , reset     , reset_core  ); 
-reset_sync reset_sync_sample (sampleClock, reset_core, reset_sample);
+reset_sync reset_sync_core   (clock  , reset     , reset_core  ); 
+reset_sync reset_sync_sample (sti_clk, reset_core, sti_rst);
 
 
 //
@@ -129,12 +112,12 @@ wire [31:0] flags_reg;
 wire demux_mode = flags_reg[0];                    // DDR sample the input data
 wire filter_mode = flags_reg[1];                   // Apply half-clock glitch noise filter to input data
 wire [3:0] disabledGroups = flags_reg[5:2];        // Which channel groups should -not- be captured.
-wire extClock_mode = flags_reg[6];                 // Use external clock for sampling.
+assign extClock_mode = flags_reg[6];                 // Use external clock for sampling.
 wire falling_edge = flags_reg[7];                  // Capture on falling edge of sample clock.
 wire rleEnable = flags_reg[8];                     // RLE compress samples
 wire numberScheme = flags_reg[9];                  // Swap upper/lower 16 bits
-assign extTestMode = flags_reg[10] && !numberScheme; // Generate external test pattern on upper 16 bits of indata
-wire intTestMode = flags_reg[11];                  // Sample internal test pattern instead of indata[31:0]
+assign extTestMode = flags_reg[10] && !numberScheme; // Generate external test pattern on upper 16 bits of sti_data
+wire intTestMode = flags_reg[11];                  // Sample internal test pattern instead of sti_data[31:0]
 wire [1:0] rle_mode = flags_reg[15:14];            // Change how RLE logic issues <value> & <counts>
 
 
@@ -172,17 +155,6 @@ if      (run) triggerLEDnn <= ~1'b1;
 else if (arm) triggerLEDnn <= ~1'b0;
 
 //
-// Select between internal and external sampling clock...
-//
-BUFGMUX BUFGMUX_intex(
-  .O  (sampleClock), // Clock MUX output
-  .I0 (clock),      // Clock0 input
-  .I1 (extClock),   // Clock1 input
-  .S  (extClock_mode)
-);
-
-
-//
 // Decode commands & config registers...
 //
 decoder decoder(
@@ -217,17 +189,21 @@ flags flags(
 );
 
 //
-// Capture input relative to sampleClock...
+// Capture input relative to sti_clk...
 //
 sync sync(
-  .sti_clk      (sampleClock),
-  .indata       (indata),
+  // configuration/control
   .intTestMode  (intTestMode),
   .numberScheme (numberScheme),
   .filter_mode  (filter_mode),
   .demux_mode   (demux_mode),
   .falling_edge (falling_edge),
-  // outputs...
+  // input stream
+  .sti_clk      (sti_clk),
+  .sti_rst      (sti_rst),
+  .sti_data_p   (sti_data_p),
+  .sti_data_n   (sti_data_n),
+  // outputs stream
   .outdata      (syncedInput)
 );
 
@@ -236,8 +212,8 @@ sync sync(
 // (used for everything else, including RLE counts)...
 //
 async_fifo async_fifo(
-  .wrclk        (sampleClock),
-  .wrreset      (reset_sample),
+  .wrclk        (sti_clk),
+  .wrreset      (sti_rst),
   .rdclk        (clock),
   .rdreset      (reset_core),
   .space_avail  (),
