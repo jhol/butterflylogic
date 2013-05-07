@@ -40,11 +40,14 @@
 `timescale 1ns/100ps
 
 module spi_receiver (
-  input  wire        clock,
-  input  wire        sclk,
-  input  wire        extReset,
-  input  wire        mosi,
-  input  wire        cs,
+  // system signals
+  input  wire        clk,
+  input  wire        rst,
+  // SPI signals
+  input  wire        spi_sclk,
+  input  wire        spi_mosi,
+  input  wire        spi_cs_n,
+  //
   input  wire        transmitting,
   output reg   [7:0] opcode,
   output reg  [31:0] opdata,
@@ -64,23 +67,23 @@ reg [2:0] bitcount, next_bitcount;	// count rxed bits of current byte
 reg [7:0] spiByte, next_spiByte;
 reg byteready, next_byteready;
 
-dly_signal mosi_reg (clock, mosi, sampled_mosi);
-dly_signal dly_sclk_reg (clock, sclk, dly_sclk);
-wire sclk_posedge = !dly_sclk && sclk;
+dly_signal mosi_reg (clk, spi_mosi, sampled_mosi);
+dly_signal dly_sclk_reg (clk, spi_sclk, dly_sclk);
+wire sclk_posedge = !dly_sclk && spi_sclk;
 
-dly_signal dly_cs_reg (clock, cs, dly_cs);
-wire cs_negedge = dly_cs && !cs;
+dly_signal dly_cs_reg (clk, spi_cs_n, dly_cs);
+wire cs_negedge = dly_cs && !spi_cs_n;
 
 
 //
 // Accumulate byte from serial input...
 //
 initial bitcount = 0;
-always @(posedge clock, posedge extReset)
-if (extReset) bitcount <= 0;
-else          bitcount <= next_bitcount;
+always @(posedge clk, posedge rst)
+if (rst) bitcount <= 0;
+else     bitcount <= next_bitcount;
 
-always @(posedge clock)
+always @(posedge clk)
 begin
   spiByte   <= next_spiByte;
   byteready <= next_byteready;
@@ -96,7 +99,7 @@ begin
     next_bitcount = 0;
 
   if (sclk_posedge) // detect rising edge of sclk
-    if (cs)
+    if (spi_cs_n)
       begin
         next_bitcount = 0;
         next_spiByte = 0;
@@ -115,13 +118,13 @@ end
 // Command tracking...
 //
 initial state = READOPCODE;
-always @(posedge clock, posedge extReset) 
-if (extReset)  state <= READOPCODE;
-else           state <= next_state;
+always @(posedge clk, posedge rst) 
+if (rst)  state <= READOPCODE;
+else      state <= next_state;
 
 initial opcode = 0;
 initial opdata = 0;
-always @(posedge clock) 
+always @(posedge clk) 
 begin
   bytecount <= next_bytecount;
   opcode    <= next_opcode;
@@ -169,5 +172,5 @@ begin
       end
   endcase
 end
-endmodule
 
+endmodule

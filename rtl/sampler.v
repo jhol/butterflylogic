@@ -40,20 +40,24 @@
 
 `timescale 1ns/100ps
 
-module sampler (
-  input  wire        clock, 		// internal clock
+module sampler #(
+  parameter integer DW = 32
+)(
+  // system signas
+  input  wire        clk, 		// clock
+  input  wire        rst, 		// reset
+  // configuration/control signals
   input  wire        extClock_mode,	// clock selection
   input  wire        wrDivider, 	// write divider register
   input  wire [23:0] config_data, 	// configuration data
+  // input stream
   input  wire        validIn,		// dataIn is valid
   input  wire [31:0] dataIn, 		// 32 input channels
+  // output stream
   output reg         validOut, 		// new sample ready
   output reg  [31:0] dataOut, 		// sampled data
   output reg         ready50
 );
-
-localparam TRUE = 1'b1;
-localparam FALSE = 1'b0;
 
 //
 // Registers...
@@ -76,7 +80,7 @@ begin
   validOut = 0;
   dataOut = 0;
 end
-always @ (posedge clock) 
+always @ (posedge clk) 
 begin
   divider  <= next_divider;
   counter  <= next_counter;
@@ -88,7 +92,7 @@ always @*
 begin
   next_divider = divider;
   next_counter = counter;
-  next_validOut = FALSE;
+  next_validOut = 1'b0;
   next_dataOut = dataOut;
 
   if (extClock_mode)
@@ -98,7 +102,7 @@ begin
     end
   else if (validIn && counter_zero)
     begin
-      next_validOut = TRUE;
+      next_validOut = 1'b1;
       next_dataOut = dataIn;
     end
 
@@ -109,7 +113,7 @@ begin
     begin
       next_divider = config_data[23:0];
       next_counter = next_divider;
-      next_validOut = FALSE; // reset
+      next_validOut = 1'b0; // reset
     end
   else if (validIn) 
     if (counter_zero)
@@ -121,14 +125,14 @@ end
 //
 // Generate ready50 50% duty cycle sample signal...
 //
-always @(posedge clock) 
+always @(posedge clk) 
 begin
   if (wrDivider)
-    ready50 <= FALSE; // reset
+    ready50 <= 1'b0; // reset
   else if (counter_zero)
-    ready50 <= TRUE;
+    ready50 <= 1'b1;
   else if (counter == divider[23:1])
-    ready50 <= FALSE;
+    ready50 <= 1'b0;
 end
 
 endmodule

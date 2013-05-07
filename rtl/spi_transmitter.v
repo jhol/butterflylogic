@@ -32,20 +32,23 @@
 
 `timescale 1ns/100ps
 
-module spi_transmitter(
-  input  wire        clock,
-  input  wire        extReset,
-  input  wire        sclk,
+module spi_transmitter (
+  // system signals
+  input  wire        clk,
+  input  wire        rst,
+  // SIP signals
+  input  wire        spi_cs_n,
+  input  wire        spi_sclk,
+  output reg         spi_miso,
+  //
   input  wire        send,
   input  wire [31:0] send_data,
   input  wire  [3:0] send_valid,
   input  wire        writeMeta,
   input  wire  [7:0] meta_data,
-  input  wire        cs,
   input  wire        query_id,
   input  wire        query_dataIn,
   input  wire [31:0] dataIn,
-  output reg         tx,
   output reg         busy,
   output reg         byteDone
 );
@@ -60,7 +63,7 @@ reg next_busy;
 
 reg [7:0] txBuffer, next_txBuffer;
 reg next_tx;
-//wire tx = txBuffer[7];
+//wire spi_miso = txBuffer[7];
 
 reg writeReset, writeByte; 
 
@@ -75,8 +78,8 @@ begin
   dbyte = 0;
   disabled = 0;
   case (bytesel)
-    2'h0 : begin dbyte = sampled_send_data[7:0]; disabled = !sampled_send_valid[0]; end
-    2'h1 : begin dbyte = sampled_send_data[15:8]; disabled = !sampled_send_valid[1]; end
+    2'h0 : begin dbyte = sampled_send_data[ 7: 0]; disabled = !sampled_send_valid[0]; end
+    2'h1 : begin dbyte = sampled_send_data[15: 8]; disabled = !sampled_send_valid[1]; end
     2'h2 : begin dbyte = sampled_send_data[23:16]; disabled = !sampled_send_valid[2]; end
     2'h3 : begin dbyte = sampled_send_data[31:24]; disabled = !sampled_send_valid[3]; end
   endcase
@@ -87,22 +90,22 @@ end
 //
 // Send one byte synchronized to falling edge of SPI clock...
 //
-always @(posedge clock)
+always @(posedge clk)
 begin
   dly_sclk <= next_dly_sclk;
   bits     <= next_bits;
   byteDone <= next_byteDone;
   txBuffer <= next_txBuffer;
-  tx       <= next_tx;
+  spi_miso       <= next_tx;
 end
 
 always @*
 begin
-  next_dly_sclk = sclk;
+  next_dly_sclk = spi_sclk;
   next_bits = bits;
   next_byteDone = byteDone;
   next_txBuffer = txBuffer;
-  next_tx = tx;
+  next_tx = spi_miso;
 
   if (writeReset) // simulation clean up - IED
     begin
@@ -126,17 +129,17 @@ begin
   // The PIC microcontroller asserts CS# in response to FPGA 
   // asserting dataReady (busy signal from this module actually).
   // Until CS# asserts though keep the bits counter reset...
-  if (cs) next_bits = 0;
+  if (spi_cs_n) next_bits = 0;
 
   // Output on falling edge of sclk when cs asserted...
-  if (!cs && dly_sclk && !sclk && !byteDone)
+  if (!spi_cs_n && dly_sclk && !spi_sclk && !byteDone)
     begin
 //      next_txBuffer = {txBuffer,1'b1};
       next_bits = bits + 1'b1;
       next_byteDone = &bits;
     end
 
-  next_tx = (cs || byteDone) ? 1'b1 : next_txBuffer[~bits];
+  next_tx = (spi_cs_n || byteDone) ? 1'b1 : next_txBuffer[~bits];
 end
 
 
@@ -147,8 +150,8 @@ parameter [1:0] INIT = 0, IDLE = 1, SEND = 2, POLL = 3;
 reg [1:0] state, next_state;
 
 initial state = INIT;
-always @(posedge clock, posedge extReset) 
-if (extReset) begin
+always @(posedge clk, posedge rst) 
+if (rst) begin
   state              <= INIT;
   sampled_send_data  <= 32'h0;
   sampled_send_valid <= 4'h0;

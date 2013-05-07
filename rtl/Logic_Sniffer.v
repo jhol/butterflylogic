@@ -77,9 +77,10 @@ module Logic_Sniffer #(
 );
 
 // system signals
-wire        clock;
+wire        sys_clk;
 wire        sys_clk_p;
 wire        sys_clk_n;
+wire        sys_rst = 1'b0;
 
 // external signals
 wire        ext_clk_p;
@@ -92,7 +93,6 @@ wire [31:0] sti_data;
 wire [31:0] sti_data_p;
 wire [31:0] sti_data_n;
 
-wire extReset = 1'b0;
 wire extClock_mode;
 wire extTestMode;
 
@@ -128,16 +128,16 @@ DCM #(
   .PSINCDEC (1'b 0),    // Dynamic phase adjust increment/decrement
   .RST      (1'b 0),    // DCM asynchronous reset input
   // clock outputs
-  .CLK2X    (clock),
+  .CLK2X    (sys_clk),
   .CLKFX    (sys_clk_p),
   .CLKFX180 (sys_clk_n),
   // feedback
-  .CLK0     (sys_clk_rev),
+  .CLK0     (sys_clk_ref),
   .CLKFB    (sys_clk_buf)
 );
 
 BUFG BUFG_sys_clk_fb (
-  .I (sys_clk_rev),
+  .I (sys_clk_ref),
   .O (sys_clk_buf)
 );
 
@@ -152,19 +152,27 @@ DCM #(
   .CLK0     (ext_clk_p),
   .CLK180   (ext_clk_n),
   // feedback
-  .CLK2X    (ext_clk_rev),
+  .CLK2X    (ext_clk_ref),
   .CLKFB    (ext_clk_buf)
+);
+
+BUFG BUFG_ext_clk_fb (
+  .I (ext_clk_ref),
+  .O (ext_clk_buf)
 );
 
 //
 // Select between internal and external sampling clock...
 //
-BUFGMUX bufmux_sti_clk [1:0] (
-  .O  ({sti_clk_p, sti_clk_n}),  // Clock MUX output
-  .I0 ({sys_clk_p, sys_clk_n}),  // Clock0 input
-  .I1 ({ext_clk_p, ext_clk_n}),  // Clock1 input
-  .S  (extClock_mode)            // Clock select
-);
+//BUFGMUX bufmux_sti_clk [1:0] (
+//  .O  ({sti_clk_p, sti_clk_n}),  // Clock MUX output
+//  .I0 ({sys_clk_p, sys_clk_n}),  // Clock0 input
+//  .I1 ({ext_clk_p, ext_clk_n}),  // Clock1 input
+//  .S  (extClock_mode)            // Clock select
+//);
+
+assign sti_clk_p = sys_clk_p;
+assign sti_clk_n = sys_clk_n;
 
 //--------------------------------------------------------------------------------
 // IO
@@ -185,9 +193,9 @@ ODDR2 ODDR2 (
 // Configure the probe pins...
 //
 reg [10:0] test_counter;
-always @ (posedge clock, posedge extReset) 
-if (extReset) test_counter <= 'b0;
-else          test_counter <= test_counter + 'b1;
+always @ (posedge sys_clk, posedge sys_rst) 
+if (sys_rst) test_counter <= 'b0;
+else         test_counter <= test_counter + 'b1;
 wire [15:0] test_pattern = {8{test_counter[10], test_counter[4]}};
 
 IOBUF #(
@@ -198,13 +206,24 @@ IOBUF #(
                                   //  "AUTO", "0"-"6" (Spartan-3E only)
   .IOSTANDARD       ("DEFAULT"),  // Specify the I/O standard
   .SLEW             ("SLOW")      // Specify the output slew rate
-) IOBUF [31:0] (
-  .O  (sti_data),                       // Buffer output
-  .IO (extData),                        // Buffer inout port (connect directly to top-level port)
-  .I  ({16'h0000, test_pattern[15:0]}), // Buffer input
-  .T  ({16'h0000, {16{~extTestMode}}})  // 3-state enable input, high=input, low=output
+) IOBUF [31:16] (
+  .O  (sti_data[31:16]),          // Buffer output
+  .IO (extData [31:16]),          // Buffer inout port (connect directly to top-level port)
+  .I  (test_pattern),             // Buffer input
+  .T  ({16{~extTestMode}})        // 3-state enable input, high=input, low=output
 );
 
+IBUF #(
+  .CAPACITANCE      ("DONT_CARE"),
+  .IBUF_DELAY_VALUE ("0"),
+  .IBUF_LOW_PWR     ("TRUE"),
+  .IFD_DELAY_VALUE  ("AUTO"),
+  .IOSTANDARD       ("DEFAULT")
+) IBUF [15:0] (
+  .O  (sti_data[15:0]),           // Buffer output
+  .I  (extData [15:0])            // Buffer input port (connect directly to top-level port)
+);
+    
 IDDR2 #(
   .DDR_ALIGNMENT ("NONE"), // Sets output alignment to "NONE", "C0" or "C1" 
   .INIT_Q0       (1'b0),   // Sets initial state of the Q0 output to 1'b0 or 1'b1
@@ -226,7 +245,7 @@ IDDR2 #(
 //--------------------------------------------------------------------------------
 
 // Output dataReady to PIC (so it'll enable our SPI CS#)...
-dly_signal dataReady_reg (clock, busy, dataReady);
+dly_signal dataReady_reg (sys_clk, busy, dataReady);
 
 //
 // Instantiate serial interface....
@@ -234,20 +253,23 @@ dly_signal dataReady_reg (clock, busy, dataReady);
 `ifdef COMM_TYPE_SPI
 
 spi_slave spi_slave (
-  .clock      (clock), 
-  .extReset   (extReset),
+  // system signals
+  .clk        (sys_clk), 
+  .rst        (sys_rst),
+  // input stream
   .dataIn     (stableInput),
   .send       (send), 
   .send_data  (sram_rddata), 
   .send_valid (sram_rdvalid),
+  // output configuration
   .cmd        (cmd),
   .execute    (execute), 
   .busy       (busy),
   // SPI signals
-  .sclk       (spi_sclk), 
-  .cs_n       (spi_cs_n),
-  .mosi       (spi_mosi),
-  .miso       (spi_miso)
+  .spi_sclk   (spi_sclk), 
+  .spi_cs_n   (spi_cs_n),
+  .spi_mosi   (spi_mosi),
+  .spi_miso   (spi_miso)
 );
 
 `else 
@@ -257,8 +279,8 @@ eia232 #(
   .SCALE    (TRXSCALE),
   .RATE     (RATE)
 ) eia232 (
-  .clock    (clock),
-  .reset    (extReset),
+  .clock    (sys_clk),
+  .reset    (sys_rst),
   .speed    (SPEED),
   .rx       (rx),
   .tx       (tx),
@@ -271,16 +293,17 @@ eia232 #(
 
 `endif 
 
-
 //
 // Instantiate core...
 //
+
 core #(
-  .MEMORY_DEPTH    (MEMORY_DEPTH)
+  .SDW (32),
+  .MDW (32)
 ) core (
   // system signsls
-  .clock           (clock),
-  .extReset        (extReset),
+  .sys_clk         (sys_clk),
+  .sys_rst         (sys_rst),
   // input stream
   .sti_clk         (sti_clk_p),
   .sti_data_p      (sti_data_p),
@@ -295,16 +318,17 @@ core #(
   .sampleReady50   (),
   .stableInput     (stableInput),
   .outputSend      (send),
-  .memoryWrData    (sram_wrdata),
-  .memoryRead      (read),
-  .memoryWrite     (write),
-  .memoryLastWrite (lastwrite),
   .extTriggerOut   (extTriggerOut),
   .armLEDnn        (armLEDnn),
   .triggerLEDnn    (triggerLEDnn),
   .wrFlags         (wrFlags),
   .extClock_mode   (extClock_mode),
-  .extTestMode     (extTestMode)
+  .extTestMode     (extTestMode),
+  // memory interface
+  .memoryWrData    (sram_wrdata),
+  .memoryRead      (read),
+  .memoryWrite     (write),
+  .memoryLastWrite (lastwrite)
 );
 
 //
@@ -312,7 +336,8 @@ core #(
 //
 sram_interface sram_interface (
   // system signals
-  .clk          (clock),
+  .clk          (sys_clk),
+  .rst          (sys_rst),
   // configuration/control signals
   .wrFlags      (wrFlags), 
   .config_data  (config_data[5:2]),
@@ -328,4 +353,3 @@ sram_interface sram_interface (
 );
 
 endmodule
-

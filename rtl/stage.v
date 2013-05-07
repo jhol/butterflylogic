@@ -49,8 +49,8 @@
 
 module stage(
   // system signals
-  input  wire        clock,
-  input  wire        reset,
+  input  wire        clk,
+  input  wire        rst,
   // input stream
   input  wire        validIn,
   input  wire [31:0] dataIn,		// Channel data...
@@ -93,7 +93,7 @@ wire [15:0] cfgDelay   = configRegister[15:0];
 //
 // Handle mask, value & config register write requests
 //
-always @ (posedge clock) 
+always @ (posedge clk) 
 configRegister <= (wrConfig) ? config_data[27:0] : configRegister;
 
 //
@@ -106,21 +106,21 @@ wire [31:0] testValue = (cfgSerial) ? shiftRegister : dataIn;
 //
 wire [7:0] dout;
 wire [7:0] matchLUT;
-trigterm_4bit byte0 (testValue[ 3: 0], clock, wrenb, din[0], dout[0], matchLUT[0]);
-trigterm_4bit byte1 (testValue[ 7: 4], clock, wrenb, din[1], dout[1], matchLUT[1]);
-trigterm_4bit byte2 (testValue[11: 8], clock, wrenb, din[2], dout[2], matchLUT[2]);
-trigterm_4bit byte3 (testValue[15:12], clock, wrenb, din[3], dout[3], matchLUT[3]);
-trigterm_4bit byte4 (testValue[19:16], clock, wrenb, din[4], dout[4], matchLUT[4]);
-trigterm_4bit byte5 (testValue[23:20], clock, wrenb, din[5], dout[5], matchLUT[5]);
-trigterm_4bit byte6 (testValue[27:24], clock, wrenb, din[6], dout[6], matchLUT[6]);
-trigterm_4bit byte7 (testValue[31:28], clock, wrenb, din[7], dout[7], matchLUT[7]);
+trigterm_4bit byte0 (testValue[ 3: 0], clk, wrenb, din[0], dout[0], matchLUT[0]);
+trigterm_4bit byte1 (testValue[ 7: 4], clk, wrenb, din[1], dout[1], matchLUT[1]);
+trigterm_4bit byte2 (testValue[11: 8], clk, wrenb, din[2], dout[2], matchLUT[2]);
+trigterm_4bit byte3 (testValue[15:12], clk, wrenb, din[3], dout[3], matchLUT[3]);
+trigterm_4bit byte4 (testValue[19:16], clk, wrenb, din[4], dout[4], matchLUT[4]);
+trigterm_4bit byte5 (testValue[23:20], clk, wrenb, din[5], dout[5], matchLUT[5]);
+trigterm_4bit byte6 (testValue[27:24], clk, wrenb, din[6], dout[6], matchLUT[6]);
+trigterm_4bit byte7 (testValue[31:28], clk, wrenb, din[7], dout[7], matchLUT[7]);
 wire matchL16 = &matchLUT[3:0];
 wire matchH16 = &matchLUT[7:4];
 
 //
 // In demux mode only one half must match, in normal mode both words must match...
 //
-always @(posedge clock) 
+always @(posedge clk) 
 if (demux_mode) match32Register <= matchH16 | matchL16;
 else            match32Register <= matchH16 & matchL16;
 
@@ -132,7 +132,7 @@ wire serialChannelH16 = dataIn[{1'b1,cfgChannel[3:0]}];
 
 //
 // Shift in bit from selected channel whenever dataIn is ready...
-always @(posedge clock) 
+always @(posedge clk) 
 if (validIn) begin
   // in demux mode two bits come in per sample
   if (demux_mode) shiftRegister <= {shiftRegister,                   serialChannelH16,  serialChannelL16};
@@ -150,8 +150,8 @@ localparam [1:0]
 reg [1:0] state, next_state;
 
 initial state = OFF;
-always @(posedge clock, posedge reset) 
-if (reset) begin
+always @(posedge clk, posedge rst) 
+if (rst) begin
   state   <= OFF;
   counter <= 0;
   match   <= FALSE;

@@ -133,7 +133,9 @@
 
 `timescale 1ns/100ps
 
-module trigger_adv (
+module trigger_adv #(
+  parameter integer DW = 32
+)(
   // system signals
   input  wire       clock,
   input  wire       reset,

@@ -30,9 +30,11 @@
 
 `timescale 1ns/100ps
 
-module spi_slave(
-  input  wire        clock,
-  input  wire        extReset,
+module spi_slave (
+  // system signals
+  input  wire        clk,
+  input  wire        rst,
+  //
   input  wire        send,
   input  wire [31:0] send_data,
   input  wire  [3:0] send_valid,
@@ -41,11 +43,25 @@ module spi_slave(
   output wire        execute,
   output wire        busy,
   // SPI signals
-  input  wire        cs_n,
-  input  wire        sclk,
-  input  wire        mosi,
-  output wire        miso
+  input  wire        spi_cs_n,
+  input  wire        spi_sclk,
+  input  wire        spi_mosi,
+  output wire        spi_miso
 );
+
+// TODO: recode SPI into SPI clock synchronous code, use CDC for data bytes
+// reg [7:0] spi_cnt;
+// reg [7:0] spi_byte;
+// 
+// always @ (posedge spi_sclk, posedge spi_cs_n)
+// if (spi_cs_n) spi_cnt <= 0;
+// else          spi_cnt <= spi_cnt + 'b1;
+// 
+// always @ (posedge spi_sclk)
+// spi_byte <= {spi_byte[6:0], spi_mosi};
+
+
+
 
 //
 // Registers...
@@ -63,16 +79,18 @@ assign cmd = {opdata,opcode};
 //
 // Synchronize inputs...
 //
-full_synchronizer sclk_sync (clock, extReset, sclk, sync_sclk);
-full_synchronizer cs_n_sync (clock, extReset, cs_n, sync_cs_n);
+full_synchronizer spi_sclk_sync (clk, rst, spi_sclk, sync_sclk);
+full_synchronizer spi_cs_n_sync (clk, rst, spi_cs_n, sync_cs_n);
 
 //
 // Instantaite the meta data generator...
 //
 wire [7:0] meta_data;
 meta_handler meta_handler(
-  .clock           (clock),
-  .extReset        (extReset),
+  // system signals
+  .clock           (clk),
+  .extReset        (rst),
+  //
   .query_metadata  (query_metadata),
   .xmit_idle       (!busy && !send && byteDone),
   .writeMeta       (writeMeta),
@@ -83,11 +101,14 @@ meta_handler meta_handler(
 // Instantiate the heavy lifters...
 //
 spi_receiver spi_receiver(
-  .clock        (clock),
-  .sclk         (sync_sclk),
-  .extReset     (extReset),
-  .mosi         (mosi),
-  .cs           (sync_cs_n),
+  // system signals
+  .clk          (clk),
+  .rst          (rst),
+  // SPI signals
+  .spi_sclk     (sync_sclk),
+  .spi_mosi     (spi_mosi),
+  .spi_cs_n     (sync_cs_n),
+  //
   .transmitting (busy),
   .opcode       (opcode),
   .opdata       (opdata),
@@ -95,19 +116,22 @@ spi_receiver spi_receiver(
 );
 
 spi_transmitter spi_transmitter(
-  .clock        (clock),
-  .sclk         (sync_sclk),
-  .extReset     (extReset),
+  // system signals
+  .clk          (clk),
+  .rst          (rst),
+  // SPI signals
+  .spi_sclk     (sync_sclk),
+  .spi_cs_n     (sync_cs_n),
+  .spi_miso     (spi_miso),
+  //
   .send         (send),
   .send_data    (send_data),
   .send_valid   (send_valid),
   .writeMeta    (writeMeta),
   .meta_data    (meta_data),
-  .cs           (sync_cs_n),
   .query_id     (query_id), 
   .query_dataIn (query_dataIn),
   .dataIn       (dataIn),
-  .tx           (miso),
   .busy         (busy),
   .byteDone     (byteDone)
 );
@@ -115,7 +139,7 @@ spi_transmitter spi_transmitter(
 //
 // Process special SPI commands not handled by core decoder...
 //
-always @(posedge clock) 
+always @(posedge clk) 
 begin
   dly_execute    <= execute;
   if (!dly_execute && execute) begin

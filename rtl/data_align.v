@@ -28,10 +28,10 @@
 // eliminate any disabled groups. ie:
 //
 //   Channels 0,1,2 are disabled:  
-//     dataOut[7:0] = channel3     (dataIn[31:24])
+//     sto_data[7:0] = channel3     (sti_data[31:24])
 //
 //   Channels 1,2 are disabled:    
-//     dataOut[15:0] = {channel3,channel0}   (dataIn[31:24],dataIn[7:0])
+//     sto_data[15:0] = {channel3,channel0}   (sti_data[31:24],sti_data[7:0])
 //
 // Compacting the data like this allows for easier RLE & filling of SRAM.
 //
@@ -39,17 +39,21 @@
 
 `timescale 1ns/100ps
 
-module data_align (
+module data_align #(
+  parameter integer DW = 32,  // data width
+  parameter integer KW = DW/8 // keep width
+)(
   // system signals
-  input  wire        clock,
+  input  wire        clk,
+  input  wire        rst,
   // configuration/control signals
   input  wire  [3:0] disabledGroups,
   // input stream
-  input  wire        validIn,
-  input  wire [31:0] dataIn,
+  input  wire        sti_valid,
+  input  wire [31:0] sti_data,
   // output stream
-  output reg         validOut,
-  output reg  [31:0] dataOut
+  output reg         sto_valid,
+  output reg  [31:0] sto_data
 );
 
 //
@@ -62,25 +66,24 @@ reg       insel2;
 //
 // Input data mux...
 //
-always @ (posedge clock)
+always @ (posedge clk)
 begin
-  validOut <= validIn;
   case (insel0[1:0])
-    2'h3    : dataOut[ 7: 0] <= dataIn[31:24];
-    2'h2    : dataOut[ 7: 0] <= dataIn[23:16];
-    2'h1    : dataOut[ 7: 0] <= dataIn[15: 8];
-    default : dataOut[ 7: 0] <= dataIn[ 7: 0];
+    2'h3    : sto_data[ 7: 0] <= sti_data[31:24];
+    2'h2    : sto_data[ 7: 0] <= sti_data[23:16];
+    2'h1    : sto_data[ 7: 0] <= sti_data[15: 8];
+    default : sto_data[ 7: 0] <= sti_data[ 7: 0];
   endcase
   case (insel1[1:0])
-    2'h2    : dataOut[15: 8] <= dataIn[31:24];
-    2'h1    : dataOut[15: 8] <= dataIn[23:16];
-    default : dataOut[15: 8] <= dataIn[15: 8];
+    2'h2    : sto_data[15: 8] <= sti_data[31:24];
+    2'h1    : sto_data[15: 8] <= sti_data[23:16];
+    default : sto_data[15: 8] <= sti_data[15: 8];
   endcase
   case (insel2)
-    1'b1    : dataOut[23:16] <= dataIn[31:24];
-    default : dataOut[23:16] <= dataIn[23:16];
+    1'b1    : sto_data[23:16] <= sti_data[31:24];
+    default : sto_data[23:16] <= sti_data[23:16];
   endcase
-              dataOut[31:24] <= dataIn[31:24];
+              sto_data[31:24] <= sti_data[31:24];
 end
 
 //
@@ -95,9 +98,9 @@ end
 // Each "insel" signal controls the select for an output mux.
 //
 // ie: insel0 controls what is -output- on bits[7:0].   
-//     Thus, if insel0 equal 2, dataOut[7:0] = dataIn[23:16]
+//     Thus, if insel0 equal 2, sto_data[7:0] = sti_data[23:16]
 //
-always @(posedge clock) 
+always @(posedge clk) 
 begin
   case (disabledGroups)
     // 24 bit configs...
@@ -119,5 +122,9 @@ begin
     default : begin insel2 <= 1'b0; insel1 <= 2'h0; insel0 <= 2'h0; end
   endcase
 end
+
+always @(posedge clk, posedge rst) 
+if (rst)  sto_valid <= 1'b0;
+else      sto_valid <= sti_valid;
 
 endmodule

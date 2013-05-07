@@ -28,9 +28,11 @@
 //
 `timescale 1ns/100ps
 
-module meta_handler(
+module meta_handler (
+  // system signals
   input  wire       clock,
   input  wire       extReset,
+  //
   input  wire       query_metadata,
   input  wire       xmit_idle,
   // outputs...

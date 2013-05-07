@@ -54,7 +54,8 @@ module sync #(
   input  wire [DW-1:0] sti_data_p,
   input  wire [DW-1:0] sti_data_n,
   // output stream
-  output wire [DW-1:0] outdata
+  output wire [DW-1:0] sto_data,
+  output wire          sto_valid
 );
 
 //
@@ -69,14 +70,15 @@ dly_signal sampled_numberScheme_reg (sti_clk, numberScheme, sampled_numberScheme
 //
 reg [7:0] tc;
 initial tc=0;
-always @ (posedge sti_clk) tc <= tc + 'b1;
+always @ (posedge sti_clk, posedge sti_rst)
+if (sti_rst)  tc <= 8'h00;
+else          tc <= tc + 'b1;
 
 wire [7:0] tc1 = {tc[0],tc[1],tc[2],tc[3],tc[4],tc[5],tc[6],tc[7]};
 wire [7:0] tc2 = {tc[3],tc[2],tc[1],tc[0],tc[4],tc[5],tc[6],tc[7]};
 wire [7:0] tc3 = {tc[3],tc[2],tc[1],tc[0],tc[7],tc[6],tc[5],tc[4]};
 
 wire [31:0] itm_count;
-(* equivalent_register_removal = "no" *)
 dly_signal #(DW) sampled_tc_reg (sti_clk, {tc3,tc2,tc1,tc}, itm_count);
 
 wire [DW-1:0] itm_sti_data_p = (sampled_intTestMode) ?  itm_count : sti_data_p;
@@ -116,7 +118,7 @@ wire [DW-1:0] demux_sti_data = (sampled_numberScheme) ? {sti_data_p[DW/2+:DW/2],
 reg [DW-1:0] filtered_sti_data; 
 
 always @(posedge sti_clk) 
-filtered_sti_data <= (outdata | dly_sti_data_p | sti_data_p) & dly_sti_data_n;
+filtered_sti_data <= (filtered_sti_data | dly_sti_data_p | sti_data_p) & dly_sti_data_n;
 
 //
 // Another pipeline step for sti_data selector to not decrease maximum clock rate...
@@ -142,6 +144,7 @@ end
 //
 // Apply number scheme.  ie: swap upper/lower 16 bits as desired...
 //
-assign outdata = (sampled_numberScheme) ? {selectdata[15:0],selectdata[31:16]} : selectdata;
+assign sto_data = (sampled_numberScheme) ? {selectdata[15:0],selectdata[31:16]} : selectdata;
+assign sto_valid = 1'b1;
 
 endmodule

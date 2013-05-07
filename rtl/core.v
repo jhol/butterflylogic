@@ -38,57 +38,68 @@
 //`define SLOW_EXTCLK
 
 module core #(
-  parameter [31:0] MEMORY_DEPTH=6
+  parameter integer SDW = 32,  // sample data width
+  parameter integer MDW = 32   // memory data width
 )(
-  input  wire        clock,
-  input  wire        extReset,     // External reset
-  input  wire  [7:0] opcode,       // Configuration command from serial/SPI interface
-  input  wire [31:0] config_data,
-  input  wire        execute,      // opcode & config_data valid
+  // system signals
+  input  wire           sys_clk,
+  input  wire           sys_rst,     // External reset
+  // configuration/control inputs
+  input  wire     [7:0] opcode,       // Configuration command from serial/SPI interface
+  input  wire    [31:0] config_data,
+  input  wire           execute,      // opcode & config_data valid
+  // configuration/control outputs
+  input  wire           outputBusy,
+  input  wire           extTriggerIn,
+  output wire           sampleReady50,
+  output wire           outputSend,
+  output wire           extTriggerOut,
+  output reg            armLEDnn,
+  output reg            triggerLEDnn,
+  output wire           wrFlags,
+  output wire           extClock_mode,
+  output wire           extTestMode,
   // input stream
-  input  wire        sti_clk,
-  input  wire [31:0] sti_data_p,
-  input  wire [31:0] sti_data_n,
-  //
-  input  wire        outputBusy,
-  input  wire        extTriggerIn,
-  output wire        sampleReady50,
-  output wire        outputSend,
-  output wire [31:0] stableInput,
-  output wire [31:0] memoryWrData,
-  output wire        memoryRead,
-  output wire        memoryWrite,
-  output wire        memoryLastWrite,
-  output wire        extTriggerOut,
-  output reg         armLEDnn,
-  output reg         triggerLEDnn,
-  output wire        wrFlags,
-  output wire        extClock_mode,
-  output wire        extTestMode
+  input  wire           sti_clk,
+  input  wire [SDW-1:0] sti_data_p,
+  input  wire [SDW-1:0] sti_data_n,
+  // output stream
+  output wire [SDW-1:0] stableInput,
+  // memory interface
+  output wire [MDW-1:0] memoryWrData,
+  output wire           memoryRead,
+  output wire           memoryWrite,
+  output wire           memoryLastWrite
 );
 
-//
-// Interconnect...
-//
-wire [31:0] syncedInput;
+// data stream (sync -> cdc)
+wire           sync_valid;
+wire [SDW-1:0] sync_data;
+wire           sync_ready;
+// data stream (cdc -> sample)
+wire           cdc_valid;
+wire [SDW-1:0] cdc_data;
+wire           cdc_ready;
+// data stream (sample -> trigger, delay)
+wire           sample_valid;
+wire [SDW-1:0] sample_data; 
+//wire           sample_ready;
+// data stream (delay -> allign)
+wire           delay_valid;
+wire [SDW-1:0] delay_data;
+// data stream (align -> rle)
+wire           align_valid;
+wire [SDW-1:0] align_data;
+// data stream (rle -> controller)
+wire          rle_valid; 
+wire [SDW-1:0] rle_data;
 
-wire [3:0] wrtrigmask; 
-wire [3:0] wrtrigval; 
-wire [3:0] wrtrigcfg;
-wire wrDivider; 
-wire wrsize; 
 
-wire sample_valid;
-wire [31:0] sample_data; 
-
-wire dly_sample_valid;
-wire [31:0] dly_sample_data;
-
-wire aligned_data_valid;
-wire [31:0] aligned_data;
-
-wire rle_data_valid; 
-wire [31:0] rle_data;
+wire  [3:0] wrtrigmask; 
+wire  [3:0] wrtrigval; 
+wire  [3:0] wrtrigcfg;
+wire        wrDivider; 
+wire        wrsize; 
 
 wire arm_basic, arm_adv;
 wire arm = arm_basic | arm_adv;
@@ -99,9 +110,9 @@ wire arm = arm_basic | arm_adv;
 wire reset_core;
 wire sti_rst;
 wire resetCmd;
-wire reset = extReset | resetCmd;
+wire reset = sys_rst | resetCmd;
 
-reset_sync reset_sync_core   (clock  , reset     , reset_core  ); 
+reset_sync reset_sync_core   (sys_clk, reset     , reset_core  ); 
 reset_sync reset_sync_sample (sti_clk, reset_core, sti_rst);
 
 
@@ -125,8 +136,8 @@ wire [1:0] rle_mode = flags_reg[15:14];            // Change how RLE logic issue
 // Sample external trigger signals...
 //
 wire run_basic, run_adv, run; 
-dly_signal extTriggerIn_reg  (clock, extTriggerIn, sampled_extTriggerIn);
-dly_signal extTriggerOut_reg (clock, run, extTriggerOut);
+dly_signal extTriggerIn_reg  (sys_clk, extTriggerIn, sampled_extTriggerIn);
+dly_signal extTriggerOut_reg (sys_clk, run, extTriggerOut);
 
 assign run = run_basic | run_adv | sampled_extTriggerIn;
 
@@ -139,18 +150,18 @@ assign run = run_basic | run_adv | sampled_extTriggerIn;
 reg [31:0] hcount;
 initial hcount=0;
 
-always @ (posedge clock)
+always @ (posedge sys_clk)
 hcount <= (~|hcount) ? 100000000 : (hcount-1'b1);
 
-always @ (posedge clock)
+always @ (posedge sys_clk)
 if (~|hcount) armLEDnn <= !armLEDnn;
 `else
-always @ (posedge clock)
+always @ (posedge sys_clk)
 if      (arm) armLEDnn <= ~1'b1;
 else if (run) armLEDnn <= ~1'b0;
 `endif
 
-always @(posedge clock)
+always @(posedge sys_clk)
 if      (run) triggerLEDnn <= ~1'b1;
 else if (arm) triggerLEDnn <= ~1'b0;
 
@@ -158,7 +169,7 @@ else if (arm) triggerLEDnn <= ~1'b0;
 // Decode commands & config registers...
 //
 decoder decoder(
-  .clock        (clock),
+  .clock        (sys_clk),
   .execute      (execute),
   .opcode       (opcode),
   // outputs...
@@ -180,7 +191,7 @@ decoder decoder(
 // Configuration flags register...
 //
 flags flags(
-  .clock       (clock),
+  .clock       (sys_clk),
   .wrFlags     (wrFlags),
   .config_data (config_data),
   .finish_now  (finish_now),
@@ -191,7 +202,9 @@ flags flags(
 //
 // Capture input relative to sti_clk...
 //
-sync sync(
+sync #(
+  .DW (SDW)
+) sync (
   // configuration/control
   .intTestMode  (intTestMode),
   .numberScheme (numberScheme),
@@ -204,57 +217,77 @@ sync sync(
   .sti_data_p   (sti_data_p),
   .sti_data_n   (sti_data_n),
   // outputs stream
-  .outdata      (syncedInput)
+  .sto_data     (sync_data),
+  .sto_valid    (sync_valid)
 );
 
 //
 // Transfer from input clock (whatever it may be) to the core clock 
 // (used for everything else, including RLE counts)...
 //
-async_fifo async_fifo(
-  .wrclk        (sti_clk),
-  .wrreset      (sti_rst),
-  .rdclk        (clock),
-  .rdreset      (reset_core),
-  .space_avail  (),
-  .wrenb        (1'b1),
-  .wrdata       (syncedInput),
-  .read_req     (1'b1),
-  .data_avail   (),
-  .data_valid   (stableValid),
-  .data_out     (stableInput)
+cdc #(
+  .DW  (SDW),
+  .FF  (8)
+) cdc (
+  // input interface
+  .ffi_clk  (sti_clk),
+  .ffi_rst  (sti_rst),
+  .ffi_dat  (sync_data),
+  .ffi_vld  (sync_valid),
+  .ffi_rdy  (sync_ready),
+  // output interface
+  .ffo_clk  (sys_clk),
+  .ffo_rst  (reset_core),
+  .ffo_dat  (cdc_data),
+  .ffo_vld  (cdc_valid),
+  .ffo_rdy  (cdc_ready)
 );
+
+assign cdc_ready = 1'b1;
+assign stableInput = cdc_data;
 
 //
 // Capture data at programmed intervals...
 //
-sampler sampler(
-  .clock         (clock),
+sampler #(
+  .DW (SDW)
+) sampler (
+  // system signals
+  .clk           (sys_clk),
+  .rst           (reset_core),
+  // sonfiguraation/control signals
   .extClock_mode (extClock_mode),
   .wrDivider     (wrDivider),
   .config_data   (config_data[23:0]),
-  .validIn       (stableValid),
-  .dataIn        (stableInput),
-  // outputs...
+  // input stream
+  .validIn       (cdc_valid),
+  .dataIn        (cdc_data),
+  // output stream
   .validOut      (sample_valid),
   .dataOut       (sample_data),
+  // ?
   .ready50       (sampleReady50)
 );
 
 //
 // Evaluate standard triggers...
 //
-trigger trigger(
-  .clock        (clock),
-  .reset        (reset_core),
-  .validIn      (sample_valid),
-  .dataIn       (sample_data),
+trigger #(
+  .DW (SDW)
+) trigger (
+  // system signals
+  .clk          (sys_clk),
+  .rst          (reset_core),
+  // sonfiguraation/control signals
   .wrMask       (wrtrigmask),
   .wrValue      (wrtrigval),
   .wrConfig     (wrtrigcfg),
   .config_data  (config_data),
   .arm          (arm_basic),
   .demux_mode   (demux_mode),
+  // input stream
+  .sti_valid    (sample_valid),
+  .sti_data     (sample_data),
   // outputs...
   .run          (run_basic),
   .capture      (capture_basic)
@@ -263,8 +296,10 @@ trigger trigger(
 //
 // Evaluate advanced triggers...
 //
-trigger_adv trigger_adv(
-  .clock         (clock),
+trigger_adv #(
+  .DW (SDW)
+) trigger_adv (
+  .clock         (sys_clk),
   .reset         (reset_core),
   .validIn       (sample_valid),
   .dataIn        (sample_data),
@@ -284,27 +319,35 @@ wire capture = capture_basic || capture_adv;
 // Delay samples so they're in phase with trigger "capture" outputs.
 //
 delay_fifo #(
-  .DELAY (3) // 3 clks to match advanced trigger
+  .DLY (3), // 3 clks to match advanced trigger
+  .DW (SDW)
 ) delay_fifo (
-  .clock     (clock),
-  .validIn   (sample_valid),
-  .dataIn    (sample_data),
-  // outputs
-  .validOut  (dly_sample_valid),
-  .dataOut   (dly_sample_data)
+  // system signals
+  .clk        (sys_clk),
+  .rst        (reset_core),
+  // input stream
+  .sti_valid  (sample_valid),
+  .sti_data   (sample_data),
+  // output stream
+  .sto_valid  (delay_valid),
+  .sto_data   (delay_data)
 );
 
 //
 // Align data so gaps from disabled groups removed...
 //
 data_align data_align (
-  .clock           (clock),
-  .disabledGroups  (disabledGroups),
-  .validIn         (dly_sample_valid && capture),
-  .dataIn          (dly_sample_data),
-  // outputs...
-  .validOut        (aligned_data_valid),
-  .dataOut         (aligned_data)
+  // system signals
+  .clk            (sys_clk),
+  .rst            (reset_core),
+  // configuration/control signals
+  .disabledGroups (disabledGroups),
+  // input stream
+  .sti_valid      (delay_valid && capture),
+  .sti_data       (delay_data),
+  // output stream
+  .sto_valid      (align_valid),
+  .sto_data       (align_data)
 );
 
 //
@@ -312,17 +355,20 @@ data_align data_align (
 // Requires client software support to decode.
 //
 rle_enc rle_enc (
-  .clock           (clock),
-  .reset           (reset_core),
+  // system signals
+  .clk             (sys_clk),
+  .rst             (reset_core),
+  // configuration/control signals
   .enable          (rleEnable),
   .arm             (arm),
   .rle_mode        (rle_mode),
   .disabledGroups  (disabledGroups),
-  .validIn         (aligned_data_valid),
-  .dataIn          (aligned_data),
+  // input stream
+  .sti_valid       (align_valid),
+  .sti_data        (align_data),
   // outputs...
-  .validOut        (rle_data_valid),
-  .dataOut         (rle_data)
+  .sto_valid       (rle_valid),
+  .sto_data        (rle_data)
 );
 
 //
@@ -332,7 +378,7 @@ rle_enc rle_enc (
 pipeline_stall #(
   .DELAY  (2)
 ) dly_arm_reg (
-  .clk     (clock), 
+  .clk     (sys_clk), 
   .reset   (reset_core), 
   .datain  (arm), 
   .dataout (dly_arm)
@@ -341,26 +387,26 @@ pipeline_stall #(
 pipeline_stall #(
   .DELAY  (1)
 ) dly_run_reg (
-  .clk     (clock), 
+  .clk     (sys_clk), 
   .reset   (reset_core), 
   .datain  (run), 
   .dataout (dly_run));
-
 
 //
 // The brain's...  mmm... brains...
 //
 controller controller(
-  .clock           (clock),
+  .clock           (sys_clk),
   .reset           (reset_core),
   .run             (dly_run),
   .wrSize          (wrsize),
   .config_data     (config_data),
-  .validIn         (rle_data_valid),
-  .dataIn          (rle_data),
   .arm             (dly_arm),
   .busy            (outputBusy),
-  // outputs...
+  // input stream
+  .validIn         (rle_valid),
+  .dataIn          (rle_data),
+  // memory interface
   .send            (outputSend),
   .memoryWrData    (memoryWrData),
   .memoryRead      (memoryRead),

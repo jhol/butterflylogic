@@ -42,25 +42,25 @@
 
 `timescale 1ns/100ps
 
-module rle_enc (
+module rle_enc #(
+  parameter integer DW = 32
+)(
   // system signals
-  input  wire        clock,
-  input  wire        reset,
+  input  wire          clk,
+  input  wire          rst,
   // configuration/control signals
-  input  wire        enable,
-  input  wire        arm,
-  input  wire  [1:0] rle_mode,
-  input  wire  [3:0] disabledGroups,
+  input  wire          enable,
+  input  wire          arm,
+  input  wire    [1:0] rle_mode,
+  input  wire    [3:0] disabledGroups,
   // input stream
-  input  wire [31:0] dataIn,
-  input  wire        validIn,
+  input  wire [DW-1:0] sti_data,
+  input  wire          sti_valid,
   // output stream
-  output reg  [31:0] dataOut,
-  output reg         validOut = 0
+  output reg  [DW-1:0] sto_data,
+  output reg           sto_valid = 0
 );
 
-localparam TRUE = 1'b1;
-localparam FALSE = 1'b0;
 localparam RLE_COUNT = 1'b1;
 
 //
@@ -72,8 +72,8 @@ reg   [1:0] mode;
 reg  [30:0] data_mask;
 reg  [30:0] last_data, next_last_data;
 reg         last_valid = 0, next_last_valid;
-reg  [31:0] next_dataOut;
-reg         next_validOut;
+reg  [31:0] next_sto_data;
+reg         next_sto_valid;
 
 reg  [30:0] count = 0, next_count;		// # of times seen same input data
 reg   [8:0] fieldcount = 0, next_fieldcount;	// # times output back-to-back <rle-counts> with no <value>
@@ -86,7 +86,7 @@ wire        count_full = (count==data_mask);
 
 reg         mismatch;
 
-wire [30:0] masked_dataIn = dataIn & data_mask;
+wire [30:0] masked_sti_data = sti_data & data_mask;
 
 
 // Repeat mode: In <value><rle-count> pairs, a count of 4 means 4 samples.
@@ -97,7 +97,7 @@ wire rle_repeat_mode = 0; // (rle_mode==0);  // Disabled - modes 0 & 1 now ident
 //
 // Figure out what mode we're in (8/16/24 or 32 bit)...
 //
-always @ (posedge clock)
+always @ (posedge clk)
 begin
   case (disabledGroups)
     4'b1110,4'b1101,4'b1011,4'b0111                 : mode <= 2'h0; // 8-bit
@@ -119,8 +119,8 @@ end
 //
 // Control Logic...
 //
-always @ (posedge clock, posedge reset)
-if (reset) begin
+always @ (posedge clk, posedge rst)
+if (rst) begin
   active    <= 0;
   mask_flag <= 0;
 end else begin
@@ -128,13 +128,13 @@ end else begin
   mask_flag <= next_mask_flag;
 end
 
-always @ (posedge clock)
+always @ (posedge clk)
 begin
   count      <= next_count;
   fieldcount <= next_fieldcount;
   track      <= next_track;
-  dataOut    <= next_dataOut;
-  validOut   <= next_validOut;
+  sto_data   <= next_sto_data;
+  sto_valid  <= next_sto_valid;
   last_data  <= next_last_data;
   last_valid <= next_last_valid;
 end
@@ -144,33 +144,33 @@ begin
   next_active = active | (enable && arm);
   next_mask_flag = mask_flag | (enable && arm); // remains asserted even if rle_enable turned off
 
-  next_dataOut = (mask_flag) ? masked_dataIn : dataIn;
-  next_validOut = validIn;
-  next_last_data = (validIn) ? masked_dataIn : last_data; 
-  next_last_valid = FALSE;
+  next_sto_data = (mask_flag) ? masked_sti_data : sti_data;
+  next_sto_valid = sti_valid;
+  next_last_data = (sti_valid) ? masked_sti_data : last_data; 
+  next_last_valid = 1'b0;
   next_count = count & {31{active}};
   next_fieldcount = fieldcount & {9{active}};
   next_track = track & {2{active}};
 
-  mismatch = |(masked_dataIn^last_data); // detect any difference not masked
+  mismatch = |(masked_sti_data^last_data); // detect any difference not masked
 
   if (active)
     begin
-      next_validOut = FALSE;
-      next_last_valid = last_valid | validIn;
+      next_sto_valid = 1'b0;
+      next_last_valid = last_valid | sti_valid;
 
-      if (validIn && last_valid)
+      if (sti_valid && last_valid)
         if (!enable || mismatch || count_full) // if mismatch, or counter full, then output count (if count>1)...
           begin
 	    next_active = enable;
-            next_validOut = TRUE;
-            next_dataOut = {RLE_COUNT,count};
+            next_sto_valid = 1'b1;
+            next_sto_data = {RLE_COUNT,count};
             case (mode)
-              2'h0 : next_dataOut = {RLE_COUNT,count[6:0]};
-              2'h1 : next_dataOut = {RLE_COUNT,count[14:0]};
-              2'h2 : next_dataOut = {RLE_COUNT,count[22:0]};
+              2'h0 : next_sto_data = {RLE_COUNT,count[6:0]};
+              2'h1 : next_sto_data = {RLE_COUNT,count[14:0]};
+              2'h2 : next_sto_data = {RLE_COUNT,count[22:0]};
             endcase
-            if (!count_gt_one) next_dataOut = last_data;
+            if (!count_gt_one) next_sto_data = last_data;
 
 	    next_fieldcount = fieldcount+1'b1; // inc # times output rle-counts
 
@@ -185,7 +185,7 @@ begin
 	    if (count_zero) // write initial data if count zero
 	      begin
 		next_fieldcount = 0;
-		next_validOut = TRUE;
+		next_sto_valid = 1'b1;
 	      end
 	    if (rle_repeat_mode && count_zero) next_count = 2;
 	    next_track = {|track,1'b1};

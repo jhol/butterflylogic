@@ -24,27 +24,30 @@
 // clocks (1 to 16).  Uses shift register LUT's, so takes only one LUT-RAM 
 // per bit regardless of delay.
 //
+
 module delay_fifo #(
-  parameter DELAY = 3,	// 1 to 16
-  parameter WIDTH = 32
+  parameter DLY = 3,	// 1 to 16
+  parameter DW = 32
 )(
-  input              clock,
-  input              reset,
-  input              validIn,
-  input  [WIDTH-1:0] dataIn,
-  output             validOut,
-  output [WIDTH-1:0] dataOut
+  // system signals
+  input           clk,
+  input           rst,
+  // input stream
+  input           sti_valid,
+  input  [DW-1:0] sti_data,
+  // output stream
+  output          sto_valid,
+  output [DW-1:0] sto_data
 );
 
-wire [3:0] dly = DELAY-1;
-SRLC16E s(.A0(dly[0]), .A1(dly[1]), .A2(dly[2]), .A3(dly[3]), .CLK(clock), .CE(1'b1), .D(validIn), .Q(validOut));
+wire [3:0] dly = DLY-1;
+SRLC16E s(.A0(dly[0]), .A1(dly[1]), .A2(dly[2]), .A3(dly[3]), .CLK(clk), .CE(1'b1), .D(sti_valid), .Q(sto_valid));
 
 genvar i;
 generate
-for (i=0; i<WIDTH; i=i+1) begin : shiftgen
-  SRLC16E s(.A0(dly[0]), .A1(dly[1]), .A2(dly[2]), .A3(dly[3]), .CLK(clock), .CE(1'b1), .D(dataIn[i]), .Q(dataOut[i]));
+for (i=0; i<DW; i=i+1) begin : shiftgen
+  SRLC16E s(.A0(dly[0]), .A1(dly[1]), .A2(dly[2]), .A3(dly[3]), .CLK(clk), .CE(1'b1), .D(sti_data[i]), .Q(sto_data[i]));
 end
 endgenerate
 
 endmodule
-

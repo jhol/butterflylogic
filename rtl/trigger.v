@@ -35,22 +35,25 @@
 
 `timescale 1ns/100ps
 
-module trigger (
+module trigger #(
+  parameter integer DW = 32
+)(
   // system signals
-  input  wire        clock,
-  input  wire        reset,
+  input  wire          clk,
+  input  wire          rst,
+  // configuration/control signals
+  input  wire    [3:0] wrMask,		// Write trigger mask register
+  input  wire    [3:0] wrValue,		// Write trigger value register
+  input  wire    [3:0] wrConfig,		// Write trigger config register
+  input  wire   [31:0] config_data,	// Data to write into trigger config regs
+  input  wire          arm,
+  input  wire          demux_mode,
   // input stream
-  input  wire        validIn,
-  input  wire [31:0] dataIn,		// Channel data...
-  //
-  input  wire  [3:0] wrMask,		// Write trigger mask register
-  input  wire  [3:0] wrValue,		// Write trigger value register
-  input  wire  [3:0] wrConfig,		// Write trigger config register
-  input  wire [31:0] config_data,	// Data to write into trigger config regs
-  input  wire        arm,
-  input  wire        demux_mode,
-  output reg         capture,		// Store captured data in fifo.
-  output wire        run		// Tell controller when trigger hit.
+  input  wire          sti_valid,
+  input  wire [DW-1:0] sti_data,        // Channel data...
+  // status
+  output reg           capture,		// Store captured data in fifo.
+  output wire          run		// Tell controller when trigger hit.
 );
 
 reg [1:0] levelReg = 2'b00;
@@ -76,11 +79,11 @@ assign run = |stageRun;
 // Background:
 // ----------
 // The original function was:  
-//    hit = ((dataIn[31:0] ^ value[31:0]) & mask[31:0])==0;
+//    hit = ((data[31:0] ^ value[31:0]) & mask[31:0])==0;
 //
 //
 // The following table shows the result for a single bit:
-//    dataIn  value   mask    hit
+//    data    value   mask    hit
 //      x       x      0       1
 //      0       0      1       1
 //      0       1      1       0
@@ -88,17 +91,17 @@ assign run = |stageRun;
 //      1       1      1       1
 //
 // If a mask bit is zero, it always matches.   If one, then 
-// the result of comparing dataIn & value matters.  If dataIn & 
+// the result of comparing data & value matters.  If data & 
 // value match, the XOR function results in zero.  So if either
 // the mask is zero, or the input matches value, you get a hit.
 //
 //
 // New code
 // --------
-// To evaluate the dataIn, each address of the LUT RAM's evalutes:
+// To evaluate the data, each address of the LUT RAM's evalutes:
 //   What hit value should result assuming my address as input?
 //
-// In other words, LUT for dataIn[3:0] stores the following at given addresses:
+// In other words, LUT for data[3:0] stores the following at given addresses:
 //   LUT address 0 stores result of:  (4'h0 ^ value[3:0]) & mask[3:0])==0
 //   LUT address 1 stores result of:  (4'h1 ^ value[3:0]) & mask[3:0])==0
 //   LUT address 2 stores result of:  (4'h2 ^ value[3:0]) & mask[3:0])==0
@@ -106,7 +109,7 @@ assign run = |stageRun;
 //   LUT address 4 stores result of:  (4'h4 ^ value[3:0]) & mask[3:0])==0
 //   etc...
 //
-// The LUT for dataIn[7:4] stores the following:
+// The LUT for data[7:4] stores the following:
 //   LUT address 0 stores result of:  (4'h0 ^ value[7:4]) & mask[7:4])==0
 //   LUT address 1 stores result of:  (4'h1 ^ value[7:4]) & mask[7:4])==0
 //   LUT address 2 stores result of:  (4'h2 ^ value[7:4]) & mask[7:4])==0
@@ -114,7 +117,7 @@ assign run = |stageRun;
 //   LUT address 4 stores result of:  (4'h4 ^ value[7:4]) & mask[7:4])==0
 //   etc...
 //
-// Eight LUT's are needed to evalute all 32-bits of dataIn, so the 
+// Eight LUT's are needed to evalute all 32-bits of data, so the 
 // following verilog computes the LUT RAM data for all simultaneously.
 //
 //
@@ -124,70 +127,57 @@ assign run = |stageRun;
 // less FPGA.  Only requirement is the Client software on your PC issue 
 // the value & mask's for each trigger stage in pairs.
 //
-reg [31:0] maskRegister, next_maskRegister;
-reg [31:0] valueRegister, next_valueRegister;
-reg [3:0] wrcount, next_wrcount;
-reg [3:0] wrenb, next_wrenb;
-reg [7:0] wrdata;
 
-initial 
-begin 
-  wrcount=0;
-  wrenb=4'b0;
+reg  [DW-1:0] maskRegister;
+reg  [DW-1:0] valueRegister;
+reg  [3:0] wrcount = 0;
+reg  [3:0] wrenb   = 4'b0;
+wire [7:0] wrdata;
+
+always @ (posedge clk)
+begin
+  maskRegister  <= (|wrMask ) ? config_data : maskRegister;
+  valueRegister <= (|wrValue) ? config_data : valueRegister;
 end
 
-always @ (posedge clock)
-begin
-  maskRegister  <= next_maskRegister;
-  valueRegister <= next_valueRegister;
-  wrcount       <= next_wrcount;
-  wrenb         <= next_wrenb;
-end
-
-always @*
-begin
-  next_wrcount = 0;
-
-  // Capture data during mask write...
-  next_maskRegister = (|wrMask) ? config_data : maskRegister;
-  next_valueRegister = (|wrValue) ? config_data : valueRegister;
-
+always @ (posedge clk, posedge rst)
+if (rst) begin
+  wrcount <= 0;
+  wrenb   <= 4'h0;
+end else begin
   // Do 16 writes when value register written...
-  next_wrenb = wrenb | wrValue;
-  if (|wrenb)
-    begin
-      next_wrcount = wrcount+1'b1;
-      if (&wrcount) next_wrenb = 4'h0;
-    end
-
-  // Compute data for the 8 target LUT's...
-  wrdata = {
-    ~|((~wrcount^valueRegister[31:28])&maskRegister[31:28]),
-    ~|((~wrcount^valueRegister[27:24])&maskRegister[27:24]),
-    ~|((~wrcount^valueRegister[23:20])&maskRegister[23:20]),
-    ~|((~wrcount^valueRegister[19:16])&maskRegister[19:16]),
-    ~|((~wrcount^valueRegister[15:12])&maskRegister[15:12]),
-    ~|((~wrcount^valueRegister[11:8])&maskRegister[11:8]),
-    ~|((~wrcount^valueRegister[7:4])&maskRegister[7:4]),
-    ~|((~wrcount^valueRegister[3:0])&maskRegister[3:0])};
-
-  if (reset)
-    begin
-      next_wrcount = 0;
-      next_wrenb = 4'h0;
-    end
+  if (|wrenb) begin
+    wrcount <= wrcount + 'b1;
+    if (&wrcount) wrenb <= 4'h0;
+  end else begin
+    wrcount <= 0;
+    wrenb <= wrenb | wrValue;
+  end
 end
 
+// Compute data for the 8 target LUT's...
+assign wrdata = {
+  ~|((~wrcount^valueRegister[31:28])&maskRegister[31:28]),
+  ~|((~wrcount^valueRegister[27:24])&maskRegister[27:24]),
+  ~|((~wrcount^valueRegister[23:20])&maskRegister[23:20]),
+  ~|((~wrcount^valueRegister[19:16])&maskRegister[19:16]),
+  ~|((~wrcount^valueRegister[15:12])&maskRegister[15:12]),
+  ~|((~wrcount^valueRegister[11: 8])&maskRegister[11: 8]),
+  ~|((~wrcount^valueRegister[7 : 4])&maskRegister[ 7: 4]),
+  ~|((~wrcount^valueRegister[3 : 0])&maskRegister[ 3: 0])
+};
 
 //
 // Instantiate stages...
 //
 wire [3:0] stageMatch;
 stage stage [3:0] (
-  .clock      (clock),
-  .reset      (reset),
-  .dataIn     (dataIn),
-  .validIn    (validIn), 
+  // system signals
+  .clk        (clk),
+  .rst        (rst),
+  // input stream
+  .dataIn     (sti_data),
+  .validIn    (sti_valid), 
 //.wrMask     (wrMask),
 //.wrValue    (wrValue), 
   .wrenb      (wrenb),
@@ -204,9 +194,9 @@ stage stage [3:0] (
 //
 // Increase level on match (on any level?!)...
 //
-always @(posedge clock, posedge reset) 
+always @(posedge clk, posedge rst) 
 begin : P2
-  if (reset) begin
+  if (rst) begin
     capture  <= 1'b0;
     levelReg <= 2'b00;
   end else begin

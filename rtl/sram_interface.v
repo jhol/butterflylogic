@@ -62,11 +62,6 @@ module sram_interface #(
 );
 
 //
-// Interconnect...
-//
-wire [MDW-1:0] ram_dataout;
-
-//
 // Registers...
 //
 reg init, next_init;
@@ -202,32 +197,27 @@ end
 //
 // Instantiate RAM's (each BRAM6kx9bit in turn instantiates three 2kx9's block RAM's)...
 //
-`define XC3S250E
 `ifdef XC3S250E
 
 genvar i;
 generate
 for (i=0; i<4; i=i+1) begin : mem
   // byte wide memory array
-  reg [8-1:0] mem2 [0:2048-1];
   reg [8-1:0] mem1 [0:2048-1];
-  reg [8-1:0] mem0 [0:2048-1];
-  reg [8-1:0] rd_data2;
+  reg [8-1:0] mem0 [0:4096-1];
   reg [8-1:0] rd_data1;
   reg [8-1:0] rd_data0;
-  reg [12:11] adr_reg;
+  reg         adr_reg;
   // write access
-  always @ (posedge clk)  if (write & clkenb[i] &  address[12]               ) mem2 [address[10:0]] <= ram_datain[i*8+:8];
-  always @ (posedge clk)  if (write & clkenb[i] & ~address[12] &  address[11]) mem1 [address[10:0]] <= ram_datain[i*8+:8];
-  always @ (posedge clk)  if (write & clkenb[i] & ~address[12] & ~address[11]) mem0 [address[10:0]] <= ram_datain[i*8+:8];
+  always @ (posedge clk)  if (write & clkenb[i] &  address[12]) mem1 [address[10:0]] <= ram_datain[i*8+:8];
+  always @ (posedge clk)  if (write & clkenb[i] & ~address[12]) mem0 [address[10:0]] <= ram_datain[i*8+:8];
   // read access
-  always @ (posedge clk)  rd_data2 <= mem2 [address[10:0]];
   always @ (posedge clk)  rd_data1 <= mem1 [address[10:0]];
-  always @ (posedge clk)  rd_data0 <= mem0 [address[10:0]];
+  always @ (posedge clk)  rd_data0 <= mem0 [address[11:0]];
   // multiplexer
-  always @ (posedge clk) adr_reg <= address[12:11];
-  always @ (*)
-  rd_data [i*8+:8] = adr_reg[12] ? rd_data2 : (adr_reg[11] ? rd_data1 : rd_data0);
+  always @ (posedge clk) adr_reg <= address[12];
+  always @*
+  rd_data [i*8+:8] = adr_reg ? rd_data1 : rd_data0;
 end
 endgenerate
 
