@@ -257,7 +257,8 @@ begin
   #100;
 
   $display ("%t: Reset...", $realtime);
-  write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00); write_cmd (8'h00);
+  repeat (5)
+  write_cmd (8'h00);
 
   $display ("%t: Query ID...", $realtime);
   write_cmd (8'h02); wait4fpga();
