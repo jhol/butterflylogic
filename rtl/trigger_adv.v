@@ -563,14 +563,15 @@ module trigterm_32bit (
   output wire        dout,
   output wire  [7:0] hit
 );
-trigterm_4bit nyb0 (dataIn[ 3: 0], clock, wrenb, din,   n0, hit[0]);
-trigterm_4bit nyb1 (dataIn[ 7: 4], clock, wrenb,  n0,   n1, hit[1]);
-trigterm_4bit nyb2 (dataIn[11: 8], clock, wrenb,  n1,   n2, hit[2]);
-trigterm_4bit nyb3 (dataIn[15:12], clock, wrenb,  n2,   n3, hit[3]);
-trigterm_4bit nyb4 (dataIn[19:16], clock, wrenb,  n3,   n4, hit[4]);
-trigterm_4bit nyb5 (dataIn[23:20], clock, wrenb,  n4,   n5, hit[5]);
-trigterm_4bit nyb6 (dataIn[27:24], clock, wrenb,  n5,   n6, hit[6]);
-trigterm_4bit nyb7 (dataIn[31:28], clock, wrenb,  n6, dout, hit[7]);
+wire [6:0] n;
+trigterm_4bit nyb0 (dataIn[ 3: 0], clock, wrenb,  din, n[0], hit[0]);
+trigterm_4bit nyb1 (dataIn[ 7: 4], clock, wrenb, n[0], n[1], hit[1]);
+trigterm_4bit nyb2 (dataIn[11: 8], clock, wrenb, n[1], n[2], hit[2]);
+trigterm_4bit nyb3 (dataIn[15:12], clock, wrenb, n[2], n[3], hit[3]);
+trigterm_4bit nyb4 (dataIn[19:16], clock, wrenb, n[3], n[4], hit[4]);
+trigterm_4bit nyb5 (dataIn[23:20], clock, wrenb, n[4], n[5], hit[5]);
+trigterm_4bit nyb6 (dataIn[27:24], clock, wrenb, n[5], n[6], hit[6]);
+trigterm_4bit nyb7 (dataIn[31:28], clock, wrenb, n[6], dout, hit[7]);
 endmodule
 
 //
@@ -585,9 +586,15 @@ module trigterm_4bit (
   output wire        dout,
   output wire        hit
 );
-SRLC16E ram (
-  .A0(addr[0]), .A1(addr[1]), .A2(addr[2]), .A3(addr[3]), 
-  .CLK(clock), .CE(wrenb), .D(din), .Q15(dout), .Q(hit));
+
+reg [15:0] mem;
+
+always @(posedge clock)
+if (wrenb) mem <= {mem, din};
+
+assign hit  = mem[addr];
+assign dout = mem[15];
+
 endmodule
 
 //
@@ -641,11 +648,18 @@ module trigterm_range_bit (
   input  wire cin,
   output wire cout
 );
-SRLC16E ram0 (
-  .A0(dataIn), .A1(1'b0), .A2(1'b0), .A3(1'b0), 
-  .CLK(clock), .CE(wrenb), .D(din), .Q15(dout), .Q(hit));
 
-MUXCY MUXCY_inst (.S(hit), .DI(dataIn), .CI(cin), .O(cout));
+wire       hit;
+reg [15:0] mem;
+
+always @(posedge clock)
+if (wrenb) mem <= {mem, din};
+
+assign hit  = mem[{3'b000, dataIn}];
+assign dout = mem[15];
+
+assign cout = hit ? cin : din;
+
 endmodule
 
 

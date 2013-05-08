@@ -30,24 +30,21 @@ module delay_fifo #(
   parameter DW = 32
 )(
   // system signals
-  input           clk,
-  input           rst,
+  input  wire          clk,
+  input  wire          rst,
   // input stream
-  input           sti_valid,
-  input  [DW-1:0] sti_data,
+  input  wire          sti_valid,
+  input  wire [DW-1:0] sti_data,
   // output stream
-  output          sto_valid,
-  output [DW-1:0] sto_data
+  output wire          sto_valid,
+  output wire [DW-1:0] sto_data
 );
 
-wire [3:0] dly = DLY-1;
-SRLC16E s(.A0(dly[0]), .A1(dly[1]), .A2(dly[2]), .A3(dly[3]), .CLK(clk), .CE(1'b1), .D(sti_valid), .Q(sto_valid));
+reg [DLY*(DW+1)-1:0] mem;
 
-genvar i;
-generate
-for (i=0; i<DW; i=i+1) begin : shiftgen
-  SRLC16E s(.A0(dly[0]), .A1(dly[1]), .A2(dly[2]), .A3(dly[3]), .CLK(clk), .CE(1'b1), .D(sti_data[i]), .Q(sto_data[i]));
-end
-endgenerate
+always @(posedge clk)
+mem <= {mem, {sti_valid, sti_data}};
+ 
+assign {sto_valid, sto_data} = mem[(DLY-1)*(DW+1)+:(DW+1)]; 
 
 endmodule

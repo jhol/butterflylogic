@@ -1,8 +1,10 @@
 LIB     = lib/BUFGMUX.v         \
+          lib/BUFG.v            \
           lib/DCM.v             \
-          lib/IDDR2.v           \
           lib/IOBUF.v           \
+          lib/IBUF.v            \
           lib/ODDR2.v           \
+          lib/IDDR2.v           \
           lib/glbl.v
 
 RTL_SPI = rtl/spi_receiver.v    \
@@ -12,8 +14,7 @@ RTL_232 = rtl/prescaler.v       \
           rtl/receiver.v        \
           rtl/transmitter.v     \
           rtl/eia232.v
-RTL     = rtl/async_fifo.v      \
-          rtl/stubs.v           \
+RTL     = rtl/cdc.v             \
           rtl/controller.v      \
           rtl/core.v            \
           rtl/data_align.v      \
