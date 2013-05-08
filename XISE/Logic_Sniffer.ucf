@@ -18,13 +18,15 @@ NET "bf_clock" IOSTANDARD = LVCMOS33;
 NET "bf_clock" LOC = P41;
 NET "bf_clock" TNM_NET = "bf_clock";
 TIMESPEC TS_bf_clock = PERIOD "bf_clock" 20 ns HIGH 50%;
-PIN "pll_wrapper/DCM_baseClock.CLK2X" TNM = "coreclk";
+PIN "dcm_sys_clk.CLK2X" TNM = "coreclk";
 
 # external Clock - use Auxiliary clock
 NET "extClockIn" IOSTANDARD = LVCMOS33 | PULLDOWN;
 NET "extClockIn" LOC = P32;
 NET "extClockIn" TNM_NET = "extClockIn";
 TIMESPEC TS_extClockIn = PERIOD "extClockIn" 10 ns HIGH 50%;
+PIN "dcm_ext_clk.CLK0" CLOCK_DEDICATED_ROUTE = FALSE;
+PIN "dcm_ext_clk.CLK180" CLOCK_DEDICATED_ROUTE = FALSE;
 
 NET "extTriggerIn" IOSTANDARD = LVCMOS33 | PULLDOWN;
 NET "extTriggerIn" LOC = P26;
@@ -305,8 +307,8 @@ INST "extData[31]" TNM = "allouts";
 TIMEGRP "allouts" OFFSET = OUT 9 ns AFTER "bf_clock";
 
 ## Put SPI synchronizers as close to respective I/O's as possible...
-INST "spi_slave/sclk_sync/*" AREA_GROUP = "pblock_1";
-INST "spi_slave/cs_n_sync/*" AREA_GROUP = "pblock_1";
+INST "spi_slave/spi_sclk_sync/*" AREA_GROUP = "pblock_1";
+INST "spi_slave/spi_cs_n_sync/*" AREA_GROUP = "pblock_1";
 AREA_GROUP "pblock_1" RANGE=SLICE_X34Y0:SLICE_X35Y1;
 
 ## Add jitter uncertainy to clock...
