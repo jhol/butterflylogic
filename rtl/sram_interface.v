@@ -58,7 +58,7 @@ module sram_interface #(
   input  wire           rd_ready,
   output reg            rd_valid,
   output reg      [3:0] rd_keep,
-  output reg  [MDW-1:0] rd_data
+  output wire [MDW-1:0] rd_data
 );
 
 //
@@ -216,8 +216,7 @@ for (i=0; i<4; i=i+1) begin : mem
   always @ (posedge clk)  rd_data0 <= mem0 [address[11:0]];
   // multiplexer
   always @ (posedge clk) adr_reg <= address[12];
-  always @*
-  rd_data [i*8+:8] = adr_reg ? rd_data1 : rd_data0;
+  assign rd_data [i*8+:8] = adr_reg ? rd_data1 : rd_data0;
 end
 endgenerate
 
@@ -228,12 +227,14 @@ generate
 for (i=0; i<4; i=i+1) begin : mem
   // byte wide memory array
   reg [8-1:0] mem [0:MSZ-1];
+  reg [8-1:0] mem_rdt;
   // write access
   always @ (posedge clk)
   if (write & clkenb[i]) mem [address] <= ram_datain[i*8+:8];
   // read access
   always @ (posedge clk)
-  rd_data [i*8+:8] <= mem [address];
+  mem_rdt <= mem [address];
+  assign rd_data [i*8+:8] = mem_rdt;
 end
 endgenerate
 
