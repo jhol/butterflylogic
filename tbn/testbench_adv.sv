@@ -1,36 +1,46 @@
 `timescale 1ns/100ps
 
-module testbench();
+module testbench #(
+  parameter integer DW = 32
+);
 
-reg clock, reset;
-initial begin clock=0; reset=1; end
-always
-begin
-  #10;
-  clock = !clock;
-end
+logic clk = 1'b1;
+logic rst = 1'b1;
 
-
+always #5 clk = ~clk;
 
 //
 // Instantiate advanced trigger...
 //
-reg validIn;
-reg [31:0] dataIn;
-reg arm;
-reg wrSelect, wrChain;
-reg [31:0] config_data;
+logic          sti_valid;
+logic [DW-1:0] sti_data;
+logic          arm;
+logic          wrSelect;
+logic          wrChain;
+logic   [31:0] config_data;
 
-trigger_adv adv (
-  clock, reset, 
-  dataIn, validIn, arm, 1'b0,
-  wrSelect, wrChain, config_data,
+trigger_adv #(
+  .DW (DW)
+) adv (
+  // system signals
+  .clk          (clk),
+  .rst          (rst),
+  // configuration/control signals
+  .arm          (arm),
+  .finish_now   (1'b0),
+  .wrSelect     (wrSelect),
+  .wrChain      (wrChain),
+  .config_data  (config_data),
+  // input stream
+  .sti_data     (sti_data ),
+  .sti_valid    (sti_valid),
   // outputs...
-  run, capture);
+  .run          (run),
+  .capture      (capture)
+);
 
-always @ (posedge clock)
+always @ (posedge clk)
 begin
-  #1;
   if (capture) $display ("%t: Capture", $realtime);
   if (run) $display ("%t: Run (triggered)", $realtime);
 end
@@ -38,54 +48,52 @@ end
 
 task issue_idle;
 begin
-  #1; dataIn = 0; validIn=1'b1;
-  @(posedge clock);
-  #0.1; validIn=1'b0;
+  #1; sti_data = 0; sti_valid=1'b1;
+  @(posedge clk);
+  #0.1; sti_valid=1'b0;
 end
 endtask
 
 
-task issue_data;
-input [31:0] value;
+task issue_data (input [DW-1:0] data);
 begin
-  $display ("%t: Issue Data: %08x", $realtime, value);
-  #1; dataIn = value; validIn=1'b1;
-  @(posedge clock);
-  #0.1; validIn=1'b0;
+  $display ("%t: Issue Data: %08x", $realtime, data);
+  #1; sti_data = data; sti_valid=1'b1;
+  @(posedge clk);
+  #0.1; sti_valid=1'b0;
 end
 endtask
 
 
-task write_select;
-input [31:0] value;
+task write_select (input [DW-1:0] data);
 begin
-  #1; config_data = value; wrSelect = 1'b1; 
-  @(posedge clock);
+  #1; config_data = data; wrSelect = 1'b1; 
+  @(posedge clk);
   #0.1; wrSelect = 1'b0;
 end
 endtask
 
 
-task write_chain;
-input [31:0] value;
+task write_chain (input [31:0] data);
 begin
-  #1; config_data = value; wrChain = 1'b1; 
-  @(posedge clock);
+  #1; config_data = data; wrChain = 1'b1; 
+  @(posedge clk);
   #1; wrChain = 1'b0;
-  repeat (32) @(posedge clock);
+  repeat (32) @(posedge clk);
 end
 endtask
 
 
 // Write trigger state...
-task write_trigstate;
-input [3:0] state;
-input trigger;
-input [1:0] start_timer;
-input [1:0] clear_timer;
-input [1:0] stop_timer;
-input [3:0] else_state;
-input [19:0] obtain_count;
+task write_trigstate (
+  input  [3:0] state,
+  input        trigger,
+  input  [1:0] start_timer,
+  input  [1:0] clear_timer,
+  input  [1:0] stop_timer,
+  input  [3:0] else_state,
+  input [19:0] obtain_count
+);
 begin
   write_select(state);
   write_chain({trigger,start_timer,clear_timer,stop_timer,else_state,obtain_count});
@@ -94,29 +102,29 @@ endtask
 
 
 // Write one of the 10 trigger terms...
-task write_trigterm;
-input [3:0] termnum;
-input [31:0] value;
-input [31:0] mask;
-reg [4:0] i;
-reg [15:0] x0,x1,x2,x3,y0,y1,y2,y3;
-reg [31:0] compare;
-reg [127:0] chain;
+task write_trigterm (
+  input [3:0] termnum,
+  input [31:0] value,
+  input [31:0] mask
+);
+  logic [4:0] i;
+  logic [15:0] x0,x1,x2,x3,y0,y1,y2,y3;
+  logic [31:0] compare;
+  logic [127:0] chain;
 begin
   {x0,x1,x2,x3,y0,y1,y2,y3}=0;
 
-  for (i=0; i<16; i=i+1)
-    begin
-      compare = ({~i[3:0],~i[3:0],~i[3:0],~i[3:0],~i[3:0],~i[3:0],~i[3:0],~i[3:0]} ^ value) & mask;
-      x0 = {x0,~|compare[3:0]};
-      x1 = {x1,~|compare[7:4]};
-      x2 = {x2,~|compare[11:8]};
-      x3 = {x3,~|compare[15:12]};
-      y0 = {y0,~|compare[19:16]};
-      y1 = {y1,~|compare[23:20]};
-      y2 = {y2,~|compare[27:24]};
-      y3 = {y3,~|compare[31:28]};
-    end
+  for (i=0; i<16; i=i+1) begin
+    compare = ({8{~i[3:0]}} ^ value) & mask;
+    x0 = {x0,~|compare[ 3: 0]};
+    x1 = {x1,~|compare[ 7: 4]};
+    x2 = {x2,~|compare[11: 8]};
+    x3 = {x3,~|compare[15:12]};
+    y0 = {y0,~|compare[19:16]};
+    y1 = {y1,~|compare[23:20]};
+    y2 = {y2,~|compare[27:24]};
+    y3 = {y3,~|compare[31:28]};
+  end
 
   chain = {y3,y2,y1,y0,x3,x2,x1,x0};
   $display ("term %d: value=%x, mask=%x, chain=%x",termnum,value,mask,chain);
@@ -164,12 +172,12 @@ endtask
 // The mid1/mid2 ops combine the first & last four edge op's respectfully.
 // The final op combines the mid ops.
 //
-parameter [3:0] 
+localparam [3:0] 
   OP_NOP=0, OP_AND=1, OP_NAND=2, OP_OR=3, OP_NOR=4, OP_XOR=5, OP_NXOR=6, OP_A=7, OP_B=8;
 
-reg [15:0] pairvalue[0:8];
-reg [15:0] midvalue[0:8];
-reg [15:0] finalvalue[0:8];
+logic [15:0] pairvalue [0:8];
+logic [15:0] midvalue  [0:8];
+logic [15:0] finalvalue[0:8];
 initial
 begin
   pairvalue[0]=16'h0000; midvalue[0]=16'h0000; finalvalue[0]=16'h0000; // NOP
@@ -183,13 +191,14 @@ begin
   pairvalue[8]=16'hF000; // B-only
 end
 
-task write_trigsum;
-input [3:0] statenum;
-input [1:0] stateterm; 
-input [3:0] op_ab, op_c_range1, op_d_edge1, op_e_timer1; // edge sums
-input [3:0] op_fg, op_h_range2, op_i_edge2, op_j_timer2;
-input [3:0] op_mid1, op_mid2, op_final; 
-reg [191:0] chain;
+task write_trigsum (
+  input [3:0] statenum,
+  input [1:0] stateterm, 
+  input [3:0] op_ab, op_c_range1, op_d_edge1, op_e_timer1, // edge sums
+  input [3:0] op_fg, op_h_range2, op_i_edge2, op_j_timer2,
+  input [3:0] op_mid1, op_mid2, op_final
+);
+  logic [191:0] chain;
 begin
   write_select (8'h40+(statenum*4)+stateterm);
 
@@ -217,10 +226,10 @@ begin
   // Write adv trigger chain data...  MSB is first shifted into the chain.
   write_chain(chain[191:160]);
   write_chain(chain[159:128]);
-  write_chain(chain[127:96]);
-  write_chain(chain[95:64]);
-  write_chain(chain[63:32]);
-  write_chain(chain[31:0]);
+  write_chain(chain[127: 96]);
+  write_chain(chain[ 95: 64]);
+  write_chain(chain[ 63: 32]);
+  write_chain(chain[ 31:  0]);
 end
 endtask
 
@@ -275,15 +284,16 @@ endtask
 //    If indata=0xE0000000, then lower hits & upper hits.  Match!
 //    If indata=0xE0000001, then lower hits & upper misses (0xE0000001+0x1FFFFFFF = upper-carry).  Miss!
 //
-parameter RANGE_XOR0 = 16'hAAAA;
-parameter RANGE_XOR1 = 16'h5555;
+localparam RANGE_XOR0 = 16'hAAAA;
+localparam RANGE_XOR1 = 16'h5555;
 
-task write_range;
-input [1:0] rangesel; // 0=range1-lower, 1=range1-upper, 2=range2-lower, 3=range2-upper
-input [31:0] target;
-reg [31:0] value;
-reg [31:0] chain; // Full chain is 16X this (512 bits total)
-integer i;
+task write_range (
+  input [1:0] rangesel, // 0=range1-lower, 1=range1-upper, 2=range2-lower, 3=range2-upper
+  input [31:0] target
+);
+  logic [31:0] value;
+  logic [31:0] chain; // Full chain is 16X this (512 bits total)
+  int i;
 begin
   write_select (8'h30+rangesel);
 
@@ -303,70 +313,70 @@ begin
 end
 endtask
 
-
-
 //
 // The edge detector uses delay flops to detect rising & falling edges, both, or neither.
 // Each 4-input CLB evalutes two bits of input, and two bits of delayed input.
 //
-parameter 
-  EDGE_RISE0=16'h0A0A, 
-  EDGE_RISE1=16'h00CC, 
-  EDGE_FALL0=16'h5050, 
-  EDGE_FALL1=16'h3300,
-  EDGE_BOTH0=16'h5A5A, // rise0|fall0
-  EDGE_BOTH1=16'h33CC, // rise1|fall1
-  EDGE_NEITHER0=16'hA5A5, // ~both0
-  EDGE_NEITHER1=16'hCC33; // ~both1
+localparam EDGE_RISE0   =16'h0A0A;
+localparam EDGE_RISE1   =16'h00CC;
+localparam EDGE_FALL0   =16'h5050;
+localparam EDGE_FALL1   =16'h3300;
+localparam EDGE_BOTH0   =16'h5A5A; // rise0|fall0
+localparam EDGE_BOTH1   =16'h33CC; // rise1|fall1
+localparam EDGE_NEITHER0=16'hA5A5; // ~both0
+localparam EDGE_NEITHER1=16'hCC33; // ~both1
 
-task write_edge;
-input edgesel; // 0=edge1, 1=edge2
-input [31:0] rising_edges;
-input [31:0] falling_edges;
-input [31:0] neither_edge;
-reg [255:0] chain;
+task write_edge (
+  input        edgesel, // 0=edge1, 1=edge2
+  input [31:0] rising_edges,
+  input [31:0] falling_edges,
+  input [31:0] neither_edge
+);
+  logic [255:0] chain;
+  int i;
 begin
   write_select (8'h34+edgesel);
 
   chain = 0;
-  for (i=31; i>0; i=i-2)
-    begin
-      chain = {chain,16'h0};
-      if (neither_edge[i])
-        chain[15:0] = chain[15:0] | EDGE_NEITHER1; // neither edge
-      else
-        case ({rising_edges[i],falling_edges[i]})
-          2'b01 : chain[15:0] = chain[15:0] | EDGE_FALL1; // falling edges
-          2'b10 : chain[15:0] = chain[15:0] | EDGE_RISE1; // rising edges
-          2'b11 : chain[15:0] = chain[15:0] | EDGE_BOTH1; // both edges
-        endcase
-
-      if (neither_edge[i-1])
-        chain[15:0] = chain[15:0] | EDGE_NEITHER0; // neither edge
-      else
-        case ({rising_edges[i-1],falling_edges[i-1]})
-          2'b01 : chain[15:0] = chain[15:0] | EDGE_FALL0; // falling edges
-          2'b10 : chain[15:0] = chain[15:0] | EDGE_RISE0; // rising edges
-          2'b11 : chain[15:0] = chain[15:0] | EDGE_BOTH0; // both edges
-        endcase
+  for (i=31; i>0; i=i-2) begin
+    chain = {chain,16'h0};
+    if (neither_edge[i]) begin
+      chain[15:0] = chain[15:0] | EDGE_NEITHER1; // neither edge
+    end else begin
+      case ({rising_edges[i],falling_edges[i]})
+        2'b01 : chain[15:0] = chain[15:0] | EDGE_FALL1; // falling edges
+        2'b10 : chain[15:0] = chain[15:0] | EDGE_RISE1; // rising edges
+        2'b11 : chain[15:0] = chain[15:0] | EDGE_BOTH1; // both edges
+      endcase
     end
+    if (neither_edge[i-1]) begin
+      chain[15:0] = chain[15:0] | EDGE_NEITHER0; // neither edge
+    end else begin
+      case ({rising_edges[i-1],falling_edges[i-1]})
+        2'b01 : chain[15:0] = chain[15:0] | EDGE_FALL0; // falling edges
+        2'b10 : chain[15:0] = chain[15:0] | EDGE_RISE0; // rising edges
+        2'b11 : chain[15:0] = chain[15:0] | EDGE_BOTH0; // both edges
+      endcase
+    end
+  end
 
   // Write adv trigger chain data...  MSB is first shifted into the chain.
   write_chain(chain[255:224]);
   write_chain(chain[223:192]);
   write_chain(chain[191:160]);
   write_chain(chain[159:128]);
-  write_chain(chain[127:96]); 
-  write_chain(chain[95:64]); 
-  write_chain(chain[63:32]);
-  write_chain(chain[31:0]);
+  write_chain(chain[127: 96]); 
+  write_chain(chain[ 95: 64]); 
+  write_chain(chain[ 63: 32]);
+  write_chain(chain[ 31: 0]);
 end
 endtask
 
 
-task write_timer_limit;
-input timersel;
-input [35:0] value;
+task write_timer_limit (
+  input timersel,
+  input [35:0] value
+);
 begin
   write_select (8'h38+timersel*2);
   write_chain (value[31:0]);
@@ -384,16 +394,16 @@ initial
 begin : test
   integer i;
 
-  validIn=0;
-  dataIn=0;
+  sti_valid=0;
+  sti_data=0;
   arm=0;
   wrSelect=0;
   wrChain=0;
   config_data=0;
 
-  repeat (10) @(posedge clock);
-  reset = 0;
-  repeat (10) @(posedge clock);
+  repeat (10) @(posedge clk);
+  rst = 0;
+  repeat (10) @(posedge clk);
 
   // Configure simple two state trigger...
 
@@ -455,9 +465,9 @@ begin : test
   write_trigsum ( 3,    1,   OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_OR, OP_OR, OP_OR);
   write_trigsum ( 3,    2,   OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_NOP, OP_OR, OP_OR, OP_OR);
 
-  repeat (10) @(posedge clock);
+  repeat (10) @(posedge clk);
   #1; arm=1;
-  repeat (10) @(posedge clock);
+  repeat (10) @(posedge clk);
 
   issue_data (32'h0); // start in state 0
   issue_data (32'h0); // nop

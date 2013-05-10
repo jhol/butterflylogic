@@ -41,32 +41,33 @@
 `timescale 1ns/100ps
 
 module sampler #(
-  parameter integer DW = 32
+  parameter integer DW = 32,  // data width
+  parameter integer CW = 24   // counter width
 )(
   // system signas
-  input  wire        clk, 		// clock
-  input  wire        rst, 		// reset
+  input  wire          clk, 		// clock
+  input  wire          rst, 		// reset
   // configuration/control signals
-  input  wire        extClock_mode,	// clock selection
-  input  wire        wrDivider, 	// write divider register
-  input  wire [23:0] config_data, 	// configuration data
+  input  wire          extClock_mode,	// clock selection
+  input  wire          wrDivider, 	// write divider register
+  input  wire [CW-1:0] config_data, 	// configuration data
   // input stream
-  input  wire        validIn,		// dataIn is valid
-  input  wire [31:0] dataIn, 		// 32 input channels
+  input  wire          sti_valid,	// sti_data is valid
+  input  wire [DW-1:0] sti_data, 	// 32 input channels
   // output stream
-  output reg         validOut, 		// new sample ready
-  output reg  [31:0] dataOut, 		// sampled data
-  output reg         ready50
+  output reg           sto_valid, 	// new sample ready
+  output reg  [DW-1:0] sto_data, 	// sampled data
+  output reg           ready50
 );
 
 //
 // Registers...
 //
-reg next_validOut;
-reg [31:0] next_dataOut;
+reg next_sto_valid;
+reg [DW-1:0] next_sto_data;
 
-reg [23:0] divider, next_divider; 
-reg [23:0] counter, next_counter;	// Made counter decrementing.  Better synth.
+reg [CW-1:0] divider, next_divider; 
+reg [CW-1:0] counter, next_counter;	// Made counter decrementing.  Better synth.
 wire counter_zero = ~|counter;
 
 
@@ -77,33 +78,33 @@ initial
 begin
   divider = 0;
   counter = 0;
-  validOut = 0;
-  dataOut = 0;
+  sto_valid = 0;
+  sto_data = 0;
 end
 always @ (posedge clk) 
 begin
-  divider  <= next_divider;
-  counter  <= next_counter;
-  validOut <= next_validOut;
-  dataOut  <= next_dataOut;
+  divider   <= next_divider;
+  counter   <= next_counter;
+  sto_valid <= next_sto_valid;
+  sto_data  <= next_sto_data;
 end
 
 always @*
 begin
   next_divider = divider;
   next_counter = counter;
-  next_validOut = 1'b0;
-  next_dataOut = dataOut;
+  next_sto_valid = 1'b0;
+  next_sto_data = sto_data;
 
   if (extClock_mode)
     begin
-      next_validOut = validIn;
-      next_dataOut = dataIn;
+      next_sto_valid = sti_valid;
+      next_sto_data = sti_data;
     end
-  else if (validIn && counter_zero)
+  else if (sti_valid && counter_zero)
     begin
-      next_validOut = 1'b1;
-      next_dataOut = dataIn;
+      next_sto_valid = 1'b1;
+      next_sto_data = sti_data;
     end
 
   //
@@ -111,11 +112,11 @@ begin
   //
   if (wrDivider)
     begin
-      next_divider = config_data[23:0];
+      next_divider = config_data[CW-1:0];
       next_counter = next_divider;
-      next_validOut = 1'b0; // reset
+      next_sto_valid = 1'b0; // reset
     end
-  else if (validIn) 
+  else if (sti_valid) 
     if (counter_zero)
       next_counter = divider;
     else next_counter = counter-1'b1;
@@ -131,7 +132,7 @@ begin
     ready50 <= 1'b0; // reset
   else if (counter_zero)
     ready50 <= 1'b1;
-  else if (counter == divider[23:1])
+  else if (counter == divider[CW-1:1])
     ready50 <= 1'b0;
 end
 

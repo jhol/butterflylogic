@@ -260,11 +260,11 @@ sampler #(
   .wrDivider     (wrDivider),
   .config_data   (config_data[23:0]),
   // input stream
-  .validIn       (cdc_valid),
-  .dataIn        (cdc_data),
+  .sti_valid     (cdc_valid),
+  .sti_data      (cdc_data ),
   // output stream
-  .validOut      (sample_valid),
-  .dataOut       (sample_data),
+  .sto_valid     (sample_valid),
+  .sto_data      (sample_data ),
   // ?
   .ready50       (sampleReady50)
 );
@@ -278,7 +278,7 @@ trigger #(
   // system signals
   .clk          (sys_clk),
   .rst          (reset_core),
-  // sonfiguraation/control signals
+  // configuraation/control signals
   .wrMask       (wrtrigmask),
   .wrValue      (wrtrigval),
   .wrConfig     (wrtrigcfg),
@@ -299,15 +299,18 @@ trigger #(
 trigger_adv #(
   .DW (SDW)
 ) trigger_adv (
-  .clock         (sys_clk),
-  .reset         (reset_core),
-  .validIn       (sample_valid),
-  .dataIn        (sample_data),
+  // system signals
+  .clk           (sys_clk),
+  .rst           (reset_core),
+  // configuraation/control signals
   .wrSelect      (wrTrigSelect),
   .wrChain       (wrTrigChain),
   .config_data   (config_data),
   .arm           (arm_adv),
   .finish_now    (finish_now),
+  // input stream
+  .sti_valid     (sample_valid),
+  .sti_data      (sample_data),
   // outputs...
   .run           (run_adv),
   .capture       (capture_adv)
