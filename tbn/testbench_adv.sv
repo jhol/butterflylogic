@@ -52,7 +52,7 @@ begin
   @(posedge clk);
   #0.1; sti_valid=1'b0;
 end
-endtask
+endtask: issue_idle
 
 
 task issue_data (input [DW-1:0] data);
@@ -62,7 +62,7 @@ begin
   @(posedge clk);
   #0.1; sti_valid=1'b0;
 end
-endtask
+endtask: issue_data
 
 
 task write_select (input [DW-1:0] data);
@@ -71,7 +71,7 @@ begin
   @(posedge clk);
   #0.1; wrSelect = 1'b0;
 end
-endtask
+endtask: write_select
 
 
 task write_chain (input [31:0] data);
@@ -98,7 +98,7 @@ begin
   write_select(state);
   write_chain({trigger,start_timer,clear_timer,stop_timer,else_state,obtain_count});
 end
-endtask
+endtask: write_trigstate
 
 
 // Write one of the 10 trigger terms...
@@ -138,7 +138,7 @@ begin
   write_chain(chain[63:32]);
   write_chain(chain[31:0]);
 end
-endtask
+endtask: write_trigterm
 
 
 //
@@ -231,7 +231,7 @@ begin
   write_chain(chain[ 63: 32]);
   write_chain(chain[ 31:  0]);
 end
-endtask
+endtask: write_trigsum
 
 
 //
@@ -311,7 +311,7 @@ begin
       write_chain(chain);
     end
 end
-endtask
+endtask: write_range
 
 //
 // The edge detector uses delay flops to detect rising & falling edges, both, or neither.
@@ -370,7 +370,7 @@ begin
   write_chain(chain[ 63: 32]);
   write_chain(chain[ 31: 0]);
 end
-endtask
+endtask: write_edge
 
 
 task write_timer_limit (
@@ -383,15 +383,14 @@ begin
   write_select (8'h39+timersel*2);
   write_chain ({28'h0,value[35:32]});
 end
-endtask
+endtask: write_timer_limit
 
 
 
 //
 // Generate test sequence...
 //
-initial
-begin : test
+initial begin : test
   integer i;
 
   sti_valid=0;
@@ -516,7 +515,7 @@ begin : test
 
   repeat (100) issue_idle;
   $finish;
-end
+end: test
 
 
 
@@ -533,4 +532,4 @@ begin
 end
 `endif
 
-endmodule
+endmodule: testbench

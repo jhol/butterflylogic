@@ -93,7 +93,7 @@ begin
     @(posedge clk);
   end
 end
-endtask
+endtask: issue_block
 
 task issue_pattern;
 begin
@@ -127,7 +127,7 @@ begin
 
   issue_block(10     , {KW{8'hFF}}, 1'b0);
 end
-endtask
+endtask: issue_pattern
 
 
 //

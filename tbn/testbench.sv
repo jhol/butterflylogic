@@ -60,7 +60,7 @@ begin
   spi_master.cycle (dmosi, dmiso);
   $display ("%t: SPI: (0x%02x) '%c'",$realtime, dmiso, dmiso);
 end
-endtask
+endtask: write_cmd
 
 task write_longcmd (
   input  [7:0] opcode,
@@ -73,7 +73,7 @@ begin
   write_cmd (value[23:16]);
   write_cmd (value[31:24]);
 end
-endtask
+endtask: write_longcmd
 
 
 // Simulate behavior of PIC responding the dataReady asserting...
@@ -82,7 +82,7 @@ begin
   while (!dataReady) @(posedge dataReady);
   while ( dataReady) write_cmd(8'h7F);
 end
-endtask
+endtask: wait4fpga
 
 
 
@@ -115,7 +115,7 @@ begin
   repeat (5) @(posedge bf_clock); 
   $finish;
 end
-endtask
+endtask: setup_divider
 
 
 // 100Mhz sampling...
@@ -140,7 +140,7 @@ begin
 
   wait4fpga();
 end
-endtask
+endtask: setup_channel
 
 
 // Test to ensure first sample, when RLE enabled, is always a <value> & not <rle-count>...
@@ -180,22 +180,20 @@ begin
     end
     begin
       repeat (1) @(posedge bf_clock); 
-      repeat (1000)
-        begin
-          repeat (5) @(posedge bf_clock); 
-          extData_reg[2] = 1;
-          repeat (5) @(posedge bf_clock); 
-          extData_reg[2] = 0;
-        end
+      repeat (1000) begin
+        repeat (5) @(posedge bf_clock); 
+        extData_reg[2] = 1;
+        repeat (5) @(posedge bf_clock); 
+        extData_reg[2] = 0;
+      end
     end
     begin
-      repeat (5000)
-        begin
-          @(posedge bf_clock);
-          extData_reg[7] = bf_clock;
-          @(negedge bf_clock);
-          extData_reg[7] = bf_clock;
-        end
+      repeat (5000) begin
+        @(posedge bf_clock);
+        extData_reg[7] = bf_clock;
+        @(negedge bf_clock);
+        extData_reg[7] = bf_clock;
+      end
     end
     begin
       repeat (80) @(posedge bf_clock);
@@ -204,7 +202,7 @@ begin
     end
   join
 end
-endtask
+endtask: setup_rle_test
 
 
 // Test max sample rate (ie: DDR sampling at reference clock)...
@@ -245,7 +243,7 @@ begin
     end
   join
 end
-endtask
+endtask: setup_maxsamplerate_test
 
 
 //
