@@ -16,9 +16,10 @@ module str_src #(
 task trn (input [VW-1:0] value);
 begin
   // put value on the bus
+  tvalid <= 1'b1;
   tvalue <= value;
   // perform transfer cycle
-  tvalid <= 1'b1;
+                  @ (posedge clk);
   while (~tready) @ (posedge clk);
   tvalid <= 1'b0;
 end
@@ -44,6 +45,7 @@ task trn (output [VW-1:0] value);
 begin
   // perform transfer cycle
   tready <= 1'b1;
+                  @ (posedge clk);
   while (~tvalid) @ (posedge clk);
   tready <= 1'b0;
   // pick value from the bus
