@@ -1,0 +1,87 @@
+LIB     = ../lib/xilinx/BUFGMUX.v  \
+          ../lib/xilinx/BUFG.v     \
+          ../lib/xilinx/DCM.v      \
+          ../lib/xilinx/IOBUF.v    \
+          ../lib/xilinx/IBUF.v     \
+          ../lib/xilinx/ODDR2.v    \
+          ../lib/xilinx/IDDR2.v    \
+          ../lib/xilinx/glbl.v
+
+RTL_SPI = ../rtl/spi_receiver.v    \
+          ../rtl/spi_slave.v       \
+          ../rtl/spi_transmitter.v
+RTL_232 = ../rtl/prescaler.v       \
+          ../rtl/receiver.v        \
+          ../rtl/transmitter.v     \
+          ../rtl/eia232.v
+RTL     = ../rtl/cdc.v             \
+          ../rtl/controller.v      \
+          ../rtl/core.v            \
+          ../rtl/data_align.v      \
+          ../rtl/decoder.v         \
+          ../rtl/delay_fifo.v      \
+          ../rtl/flags.v           \
+          ../rtl/Logic_Sniffer.v   \
+          ../rtl/meta.v            \
+          ../rtl/regs.v            \
+          ../rtl/rle_enc.v         \
+          ../rtl/sampler.v         \
+          ../rtl/sram_interface.v  \
+          ../rtl/stage.v           \
+          ../rtl/sync.v            \
+          ../rtl/timer.v           \
+          ../rtl/trigger_adv.v     \
+          ../rtl/trigger.v         \
+          $(RTL_SPI)
+
+TBN_MIX = ../tbn/testbench_adv2.sv \
+          ../tbn/testbench_adv.sv  \
+          ../tbn/testbench_rle2.sv \
+          ../tbn/testbench_rle.sv  \
+          ../tbn/testbench.sv
+TBN =     ../tbn/spi_master.sv \
+          ../tbn/str.sv
+
+ifdef WAVE
+OPT = -g2012 -I rtl -D ICARUS -D WAVE
+else
+OPT = -g2012 -I rtl -D ICARUS
+endif
+
+all: shifter adv adv2 rle rle2 full divider
+
+shifter: $(TBN) ../tbn/tb_shifter.sv ../rtl/shifter.v
+	iverilog $(OPT) $(TBN) ../tbn/tb_shifter.sv ../rtl/shifter.v -o shifter.out
+	vvp -n -l shifter.log shifter.out
+
+adv: ../tbn/testbench_adv.sv ../rtl/trigger_adv.v ../rtl/timer.v ../rtl/regs.v
+	iverilog $(OPT) ../tbn/testbench_adv.sv ../rtl/trigger_adv.v ../rtl/timer.v ../rtl/regs.v -o adv.out
+	vvp -n -l adv.log adv.out
+
+adv2: ../tbn/testbench_adv2.sv $(RTL) $(TBN)
+	iverilog $(OPT) ../tbn/testbench_adv2.sv $(RTL) $(TBN) -o adv2.out
+	vvp -n -l adv2.log adv2.out
+
+rle: ../tbn/testbench_rle.sv ../rtl/rle_enc.v
+	iverilog $(OPT) ../tbn/testbench_rle.sv ../rtl/rle_enc.v -o rle.out
+	vvp -n -l rle.log rle.out
+
+rle2: ../tbn/testbench_rle2.sv $(RTL) $(TBN)
+	iverilog $(OPT) ../tbn/testbench_rle2.sv $(RTL) $(TBN) -o rle2.out
+	vvp -n -l rle2.log rle2.out
+
+full: ../tbn/testbench.sv $(RTL) $(TBN) $(LIB)
+	iverilog $(OPT) ../tbn/testbench.sv $(RTL) $(TBN) $(LIB) -o full.out
+	vvp -n -l full.log full.out
+
+divider: ../tbn/testbench.sv $(RTL) $(TBN)
+	iverilog $(OPT) -D TEST_DIVIDER ../tbn/testbench.sv $(RTL) $(TBN) -o divider.out
+	vvp -n -l divider.log divider.out
+
+gtk:
+	gtkwave waves.dump waves.sav
+
+clean:
+	rm -rf *.vcd
+	rm -rf *.out
+	rm -rf *.log
