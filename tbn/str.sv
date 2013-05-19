@@ -16,12 +16,12 @@ module str_src #(
 task trn (input [VW-1:0] value);
 begin
   // put value on the bus
-  tvalid <= 1'b1;
-  tvalue <= value;
+  tvalid = 1'b1;
+  tvalue = value;
   // perform transfer cycle
                   @ (posedge clk);
   while (~tready) @ (posedge clk);
-  tvalid <= 1'b0;
+  tvalid = 1'b0;
 end
 endtask: trn
 
@@ -44,12 +44,12 @@ module str_drn #(
 task trn (output [VW-1:0] value);
 begin
   // perform transfer cycle
-  tready <= 1'b1;
+  tready = 1'b1;
                   @ (posedge clk);
   while (~tvalid) @ (posedge clk);
-  tready <= 1'b0;
+  tready = 1'b0;
   // pick value from the bus
-  value <= tvalue;
+  value = tvalue;
 end
 endtask: trn
 

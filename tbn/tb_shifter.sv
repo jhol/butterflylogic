@@ -27,7 +27,8 @@ logic          sto_ready;
 // test signals
 logic [DW-1:0] value;
 int unsigned   error = 0;
-int unsigned   i;
+int unsigned   src_i;
+int unsigned   drn_i;
 
 ////////////////////////////////////////////////////////////////////////////////
 // test sequence
@@ -46,7 +47,7 @@ fork
     test_bypass;
     repeat (2) @ (posedge clk);
     // report test status
-    if (error)  $display ("FAILURE: there were %d errors during simulation.");
+    if (error)  $display ("FAILURE: there were %d errors during simulation.", error);
     else        $display ("SUCESS: there were no errors during simulation.");
     $finish();
   end
@@ -65,19 +66,18 @@ end
 task test_bypass;
 begin
   ctl_ena = 0;
-        src.tvalid = 1'b1;
   repeat (2) @ (posedge clk);
   fork
     // source sequence
     begin
-      for (i=0; i<16; i++) begin
-        src.trn ({8{i[3:0]}});
+      for (src_i=0; src_i<16; src_i++) begin
+        src.trn ({8{src_i[3:0]}});
       end
     end
     // drain sequence
     begin
-      for (i=0; i<16; i++) begin
-        drn.trn (value); if (value != {8{i[3:0]}})  error++;
+      for (drn_i=0; drn_i<16; drn_i++) begin
+        drn.trn (value); if (value != {8{drn_i[3:0]}})  error++;
       end
     end
   join

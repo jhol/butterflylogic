@@ -32,13 +32,13 @@ module shifter #(
   // configuration signals
   input  wire [DW-1:0] cfg_mask,
   // input stream
-  input  wire [DW-1:0] sti_data,
   input  wire          sti_valid,
   output wire          sti_ready,
+  input  wire [DW-1:0] sti_data,
   // output stream
-  output reg  [DW-1:0] sto_data,
-  output reg           sto_valid = 0,
-  input  wire          sto_ready
+  output wire          sto_valid,
+  input  wire          sto_ready,
+  output wire [DW-1:0] sto_data
 );
 
 // number of data procesing layers
@@ -51,7 +51,7 @@ assign sti_transfer = sti_valid & sti_ready;
 
 // delay data path signals
 reg  [DL-1:0] [DW-1:0] pipe_data;
-reg  [DL-1:0]          pipe_valid = 0;
+reg  [DL-1:0]          pipe_valid = {DL{1'b0}};
 wire [DL-1:0]          pipe_ready;
 
 // shifter dynamic control signal
@@ -68,12 +68,11 @@ reg  [DW-1:0] [DL-1:0] shift;
 // control path
 always @ (posedge clk, posedge rst)
 if (rst) begin
-  sto_valid <= 1'b0;
+  pipe_valid <= {DL{1'b0}};
 end else if (ctl_ena) begin
-  sto_valid <= sti_valid;
+  pipe_valid <= {pipe_valid [DL-2:0], sti_valid};
 end
 
-assign sti_ready = sto_ready | ~sto_valid;
 
 // data path
 genvar l, b;
@@ -85,5 +84,11 @@ generate
     end
   end
 endgenerate
+
+// combinatorial bypass
+assign sto_valid = !ctl_ena ? sti_valid : pipe_valid[DL-1];
+assign sto_data  = !ctl_ena ? sti_data  : pipe_data [DL-1];
+
+assign sti_ready = !ctl_ena ? sto_ready : pipe_ready[0] | ~pipe_valid[0];
 
 endmodule
