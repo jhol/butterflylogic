@@ -11,10 +11,10 @@ logic rst = 1;
 always #5ns clk = ~clk;
 
 // control
-logic          ctl_ena;
-logic          ctl_clr;
+logic          ctl_ena = 1'b0;
+logic          ctl_clr = 1'b0;
 // configuration
-logic [DW-1:0] cfg_mask;
+logic [DW-1:0] cfg_mask = {DW{1'b1}};
 // input stream
 logic [DW-1:0] sti_data;
 logic          sti_valid;
@@ -27,31 +27,62 @@ logic          sto_ready;
 // test signals
 logic [DW-1:0] value;
 int unsigned   error = 0;
+int unsigned   i;
 
 ////////////////////////////////////////////////////////////////////////////////
 // test sequence
 ////////////////////////////////////////////////////////////////////////////////
 
 initial
+begin
 fork
 
-  // source sequence
+  // streaming sequences
   begin
-    src.trn (32'h00000011);
-  end
-
-  // drain sequence
-  begin
-    drn.trn (value); if (value != 32'h00000011)  error++;
+    // reset sequence
+    repeat (2) @ (posedge clk);
+    rst = 1'b0;
+    // bypass test
+    test_bypass;
+    repeat (2) @ (posedge clk);
+    // report test status
+    if (error)  $display ("FAILURE: there were %d errors during simulation.");
+    else        $display ("SUCESS: there were no errors during simulation.");
+    $finish();
   end
 
   // timeout
   begin
-    repeat (16) @ (posedge clk);
+    repeat (128) @ (posedge clk);
+    $display ("FAILURE: simulation ended due to timeout.");
     $finish();
   end
 
 join
+end
+
+
+task test_bypass;
+begin
+  ctl_ena = 0;
+        src.tvalid = 1'b1;
+  repeat (2) @ (posedge clk);
+  fork
+    // source sequence
+    begin
+      for (i=0; i<16; i++) begin
+        src.trn ({8{i[3:0]}});
+      end
+    end
+    // drain sequence
+    begin
+      for (i=0; i<16; i++) begin
+        drn.trn (value); if (value != {8{i[3:0]}})  error++;
+      end
+    end
+  join
+end
+endtask: test_bypass
 
 ////////////////////////////////////////////////////////////////////////////////
 // module instances
