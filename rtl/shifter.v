@@ -56,12 +56,12 @@ wire sti_transfer;
 assign sti_transfer = sti_valid & sti_ready;
 
 // delay data path signals
-reg  [DL-1:0] [DW-1:0] pipe_data;
-reg  [DL-1:0]          pipe_valid = {DL{1'b0}};
-wire [DL-1:0]          pipe_ready;
+reg  [DL-1:0] pipe_data [DW-1:0];
+reg  [DL-1:0] pipe_valid = {DL{1'b0}};
+wire [DL-1:0] pipe_ready;
 
 // shifter dynamic control signal
-reg  [DW-1:0] [DL-1:0] shift;
+reg  [DW-1:0] shift [DL-1:0];
 
 // rotate right
 //function [DW-1:0] rtr (
