@@ -1,7 +1,7 @@
 //--------------------------------------------------------------------------------
 //
 // Copyright (C) 2013 Iztok Jeras
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
@@ -92,3 +92,4 @@ assign sto_data  = !ctl_ena ? sti_data  : pipe_data [DL-1];
 assign sti_ready = !ctl_ena ? sto_ready : pipe_ready[0] | ~pipe_valid[0];
 
 endmodule
+

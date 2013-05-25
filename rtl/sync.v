@@ -2,7 +2,7 @@
 // sync.vhd
 //
 // Copyright (C) 2006 Michael Poppitz
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
@@ -30,7 +30,7 @@
 //              Revised to carefully avoid any cross-connections between sti_data
 //              bits from the I/O's until a couple flops have sampled everything.
 //              Also moved tc & numberScheme selects from top level here.
-// 
+//
 
 `timescale 1ns/100ps
 
@@ -65,7 +65,7 @@ dly_signal sampled_intTestMode_reg  (sti_clk, intTestMode , sampled_intTestMode 
 dly_signal sampled_numberScheme_reg (sti_clk, numberScheme, sampled_numberScheme);
 
 //
-// Internal test mode.  Put a 8-bit test pattern munged in 
+// Internal test mode.  Put a 8-bit test pattern munged in
 // different ways onto the 32-bit input...
 //
 reg [7:0] tc;
@@ -98,7 +98,7 @@ end
 
 //
 // Instantiate demux.  Special case for number scheme mode, since demux upper bits we have
-// the final full 32-bit shouldn't be swapped.  So it's preswapped here, to "undo" the final 
+// the final full 32-bit shouldn't be swapped.  So it's preswapped here, to "undo" the final
 // numberscheme on output...
 //
 // Demultiplexes 16 input channels into 32 output channels,
@@ -115,9 +115,9 @@ wire [DW-1:0] demux_sti_data = (sampled_numberScheme) ? {sti_data_p[DW/2+:DW/2],
 // as valid. This is sufficient for sample rates up to 100MHz.
 //
 
-reg [DW-1:0] filtered_sti_data; 
+reg [DW-1:0] filtered_sti_data;
 
-always @(posedge sti_clk) 
+always @(posedge sti_clk)
 filtered_sti_data <= (filtered_sti_data | dly_sti_data_p | sti_data_p) & dly_sti_data_n;
 
 //
@@ -126,14 +126,14 @@ filtered_sti_data <= (filtered_sti_data | dly_sti_data_p | sti_data_p) & dly_sti
 reg [1:0] select;
 reg [DW-1:0] selectdata;
 
-always @(posedge sti_clk) 
+always @(posedge sti_clk)
 begin
   // IED - better starting point for synth tools...
   if (demux_mode)       select <= 2'b10;
   else if (filter_mode) select <= 2'b11;
   else                  select <= {1'b0,falling_edge};
   // 4:1 mux...
-  case (select) 
+  case (select)
     2'b00 : selectdata <= itm_sti_data_p;
     2'b01 : selectdata <= itm_sti_data_n;
     2'b10 : selectdata <= demux_sti_data;
@@ -148,3 +148,4 @@ assign sto_data = (sampled_numberScheme) ? {selectdata[15:0],selectdata[31:16]} 
 assign sto_valid = 1'b1;
 
 endmodule
+

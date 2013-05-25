@@ -31,7 +31,7 @@ module pipeline_stall #(
 endmodule
 
 //
-// Two back to back flop's.  A full synchronizer (which XISE 
+// Two back to back flop's.  A full synchronizer (which XISE
 // will convert into a nice shift register using a single LUT)
 // to sample asynchronous signals safely.
 //
@@ -63,3 +63,4 @@ if (hardreset) reset_reg <= 4'hF;
 else           reset_reg <= {reset_reg,1'b0};
 
 endmodule
+

@@ -2,7 +2,7 @@
 // trigger.vhd
 //
 // Copyright (C) 2006 Michael Poppitz
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
@@ -21,17 +21,17 @@
 //
 // Details: http://www.sump.org/projects/analyzer/
 //
-// Complex 4 stage 32 channel trigger. 
+// Complex 4 stage 32 channel trigger.
 //
 // All commands are passed on to the stages. This file only maintains
 // the global trigger level and it outputs the run condition if it is set
 // by any of the stages.
-// 
+//
 //--------------------------------------------------------------------------------
 //
-// 12/29/2010 - Ian Davis (IED) - Verilog version, changed to use LUT based 
+// 12/29/2010 - Ian Davis (IED) - Verilog version, changed to use LUT based
 //    masked comparisons, and other cleanups created - mygizmos.org
-// 
+//
 
 `timescale 1ns/100ps
 
@@ -42,18 +42,18 @@ module trigger #(
   input  wire          clk,
   input  wire          rst,
   // configuration/control signals
-  input  wire    [3:0] wrMask,		// Write trigger mask register
-  input  wire    [3:0] wrValue,		// Write trigger value register
-  input  wire    [3:0] wrConfig,		// Write trigger config register
-  input  wire   [31:0] config_data,	// Data to write into trigger config regs
+  input  wire    [3:0] wrMask,    // Write trigger mask register
+  input  wire    [3:0] wrValue,   // Write trigger value register
+  input  wire    [3:0] wrConfig,    // Write trigger config register
+  input  wire   [31:0] config_data, // Data to write into trigger config regs
   input  wire          arm,
   input  wire          demux_mode,
   // input stream
   input  wire          sti_valid,
   input  wire [DW-1:0] sti_data,        // Channel data...
   // status
-  output reg           capture,		// Store captured data in fifo.
-  output wire          run		// Tell controller when trigger hit.
+  output reg           capture,   // Store captured data in fifo.
+  output wire          run    // Tell controller when trigger hit.
 );
 
 reg [1:0] levelReg = 2'b00;
@@ -68,17 +68,17 @@ assign run = |stageRun;
 // Much more space efficient in FPGA to compare this way.
 //
 // Instead of four seperate 32-bit value, 32-bit mask, and 32-bit comparison
-// functions & all manner of flops & interconnect, each stage uses LUT table 
+// functions & all manner of flops & interconnect, each stage uses LUT table
 // lookups instead.
 //
-// Each LUT RAM evaluates 4-bits of input.  The RAM is programmed to 
-// evaluate the original masked compare function, and is serially downloaded 
+// Each LUT RAM evaluates 4-bits of input.  The RAM is programmed to
+// evaluate the original masked compare function, and is serially downloaded
 // by the following verilog.
 //
 //
 // Background:
 // ----------
-// The original function was:  
+// The original function was:
 //    hit = ((data[31:0] ^ value[31:0]) & mask[31:0])==0;
 //
 //
@@ -90,8 +90,8 @@ assign run = |stageRun;
 //      1       0      1       0
 //      1       1      1       1
 //
-// If a mask bit is zero, it always matches.   If one, then 
-// the result of comparing data & value matters.  If data & 
+// If a mask bit is zero, it always matches.   If one, then
+// the result of comparing data & value matters.  If data &
 // value match, the XOR function results in zero.  So if either
 // the mask is zero, or the input matches value, you get a hit.
 //
@@ -117,14 +117,14 @@ assign run = |stageRun;
 //   LUT address 4 stores result of:  (4'h4 ^ value[7:4]) & mask[7:4])==0
 //   etc...
 //
-// Eight LUT's are needed to evalute all 32-bits of data, so the 
+// Eight LUT's are needed to evalute all 32-bits of data, so the
 // following verilog computes the LUT RAM data for all simultaneously.
 //
 //
 // Result:
 // ------
-// It functionally does exactly the same thing as before.  Just uses 
-// less FPGA.  Only requirement is the Client software on your PC issue 
+// It functionally does exactly the same thing as before.  Just uses
+// less FPGA.  Only requirement is the Client software on your PC issue
 // the value & mask's for each trigger stage in pairs.
 //
 
@@ -177,9 +177,9 @@ stage stage [3:0] (
   .rst        (rst),
   // input stream
   .dataIn     (sti_data),
-  .validIn    (sti_valid), 
+  .validIn    (sti_valid),
 //.wrMask     (wrMask),
-//.wrValue    (wrValue), 
+//.wrValue    (wrValue),
   .wrenb      (wrenb),
   .din        (wrdata),
   .wrConfig   (wrConfig),
@@ -194,7 +194,7 @@ stage stage [3:0] (
 //
 // Increase level on match (on any level?!)...
 //
-always @(posedge clk, posedge rst) 
+always @(posedge clk, posedge rst)
 begin : P2
   if (rst) begin
     capture  <= 1'b0;
@@ -206,3 +206,4 @@ begin : P2
 end
 
 endmodule
+

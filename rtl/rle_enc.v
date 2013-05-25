@@ -2,7 +2,7 @@
 // rle_enc.vhd
 //
 // Copyright (C) 2007 Jonas Diemer
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
@@ -38,7 +38,7 @@
 //    1 : Always.  <value>'s reissued after every <rle-count> field.
 //    2 : Periodic.  <value>'s reissued approx every 256 <rle-count> fields.
 //    3 : Unlimited.  <value>'s can be followed by unlimited numbers of <rle-count> fields.
-// 
+//
 
 `timescale 1ns/100ps
 
@@ -75,9 +75,9 @@ reg         last_valid = 0, next_last_valid;
 reg  [31:0] next_sto_data;
 reg         next_sto_valid;
 
-reg  [30:0] count = 0, next_count;		// # of times seen same input data
-reg   [8:0] fieldcount = 0, next_fieldcount;	// # times output back-to-back <rle-counts> with no <value>
-reg   [1:0] track = 0, next_track;		// Track if at start of rle-coutn sequence.
+reg  [30:0] count = 0, next_count;    // # of times seen same input data
+reg   [8:0] fieldcount = 0, next_fieldcount;  // # times output back-to-back <rle-counts> with no <value>
+reg   [1:0] track = 0, next_track;    // Track if at start of rle-coutn sequence.
 
 wire [30:0] inc_count = count+1'b1;
 wire        count_zero = ~|count;
@@ -146,7 +146,7 @@ begin
 
   next_sto_data = (mask_flag) ? masked_sti_data : sti_data;
   next_sto_valid = sti_valid;
-  next_last_data = (sti_valid) ? masked_sti_data : last_data; 
+  next_last_data = (sti_valid) ? masked_sti_data : last_data;
   next_last_valid = 1'b0;
   next_count = count & {31{active}};
   next_fieldcount = fieldcount & {9{active}};
@@ -162,7 +162,7 @@ begin
       if (sti_valid && last_valid)
         if (!enable || mismatch || count_full) // if mismatch, or counter full, then output count (if count>1)...
           begin
-	    next_active = enable;
+      next_active = enable;
             next_sto_valid = 1'b1;
             next_sto_data = {RLE_COUNT,count};
             case (mode)
@@ -172,25 +172,26 @@ begin
             endcase
             if (!count_gt_one) next_sto_data = last_data;
 
-	    next_fieldcount = fieldcount+1'b1; // inc # times output rle-counts
+      next_fieldcount = fieldcount+1'b1; // inc # times output rle-counts
 
-	    // If mismatch, or rle_mode demands it, set count=0 (which will force reissue of a <value>).
-	    // Otherwise, set to 1 to avoid thre redundant <value> from being output.
-	    next_count = (mismatch || ~rle_mode[1] || ~rle_mode[0] & fieldcount[8]) ? 0 : 1;
-	    next_track = next_count[1:0];
+      // If mismatch, or rle_mode demands it, set count=0 (which will force reissue of a <value>).
+      // Otherwise, set to 1 to avoid thre redundant <value> from being output.
+      next_count = (mismatch || ~rle_mode[1] || ~rle_mode[0] & fieldcount[8]) ? 0 : 1;
+      next_track = next_count[1:0];
           end
         else // match && !count_full
-	  begin
+    begin
             next_count = inc_count;
-	    if (count_zero) // write initial data if count zero
-	      begin
-		next_fieldcount = 0;
-		next_sto_valid = 1'b1;
-	      end
-	    if (rle_repeat_mode && count_zero) next_count = 2;
-	    next_track = {|track,1'b1};
-	  end
+      if (count_zero) // write initial data if count zero
+        begin
+    next_fieldcount = 0;
+    next_sto_valid = 1'b1;
+        end
+      if (rle_repeat_mode && count_zero) next_count = 2;
+      next_track = {|track,1'b1};
+    end
     end
 end
 
 endmodule
+

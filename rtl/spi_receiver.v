@@ -2,7 +2,7 @@
 // spi_receiver.v
 //
 // Copyright (C) 2006 Michael Poppitz
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
@@ -57,13 +57,13 @@ module spi_receiver (
 localparam READOPCODE = 1'h0;
 localparam READLONG   = 1'h1;
 
-reg state, next_state;			// receiver state
-reg [1:0] bytecount, next_bytecount;	// count rxed bytes of current command
-reg [7:0] next_opcode;		// opcode byte
-reg [31:0] next_opdata;	// data dword
+reg state, next_state;      // receiver state
+reg [1:0] bytecount, next_bytecount;  // count rxed bytes of current command
+reg [7:0] next_opcode;    // opcode byte
+reg [31:0] next_opdata; // data dword
 reg next_execute;
 
-reg [2:0] bitcount, next_bitcount;	// count rxed bits of current byte
+reg [2:0] bitcount, next_bitcount;  // count rxed bits of current byte
 reg [7:0] spiByte, next_spiByte;
 reg byteready, next_byteready;
 
@@ -118,13 +118,13 @@ end
 // Command tracking...
 //
 initial state = READOPCODE;
-always @(posedge clk, posedge rst) 
+always @(posedge clk, posedge rst)
 if (rst)  state <= READOPCODE;
 else      state <= next_state;
 
 initial opcode = 0;
 initial opdata = 0;
-always @(posedge clk) 
+always @(posedge clk)
 begin
   bytecount <= next_bytecount;
   opcode    <= next_opcode;
@@ -143,34 +143,35 @@ begin
   case (state)
     READOPCODE : // receive byte
       begin
-	next_bytecount = 0;
-	if (byteready)
-	  begin
-	    next_opcode = spiByte;
-	    if (spiByte[7])
-	      next_state = READLONG;
-	    else // short command
-	      begin
-		next_execute = 1'b1;
-	  	next_state = READOPCODE;
-	      end
-	  end
+  next_bytecount = 0;
+  if (byteready)
+    begin
+      next_opcode = spiByte;
+      if (spiByte[7])
+        next_state = READLONG;
+      else // short command
+        begin
+    next_execute = 1'b1;
+      next_state = READOPCODE;
+        end
+    end
       end
 
     READLONG : // receive 4 word parameter
       begin
-	if (byteready)
-	  begin
-	    next_bytecount = bytecount + 1'b1;
-	    next_opdata = {spiByte,opdata[31:8]};
-	    if (&bytecount) // execute long command
-	      begin
-		next_execute = 1'b1;
-	  	next_state = READOPCODE;
-	      end
-	  end
+  if (byteready)
+    begin
+      next_bytecount = bytecount + 1'b1;
+      next_opdata = {spiByte,opdata[31:8]};
+      if (&bytecount) // execute long command
+        begin
+    next_execute = 1'b1;
+      next_state = READOPCODE;
+        end
+    end
       end
   endcase
 end
 
 endmodule
+

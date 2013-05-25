@@ -2,7 +2,7 @@
 // prescaler.vhd
 //
 // Copyright (C) 2006 Michael Poppitz
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
@@ -43,7 +43,7 @@ scaled = 1'b1;
 reg [31:0] counter, next_counter;
 reg next_scaled;
 
-always @(posedge clock, posedge reset) 
+always @(posedge clock, posedge reset)
 if (reset) begin
   counter <= 0;
   scaled  <= 1'b0;
@@ -55,11 +55,11 @@ end
 always
 begin
   next_scaled = 1'b0;
-  case (div) 
-    2'b00 : next_scaled = (counter == (SCALE-1));	// 115200 baud
-    2'b01 : next_scaled = (counter == (2*SCALE-1));	// 57600 baud
-    2'b10 : next_scaled = (counter == (3*SCALE-1));	// 38400 baud
-    2'b11 : next_scaled = (counter == (6*SCALE-1));	// 19200 baud
+  case (div)
+    2'b00 : next_scaled = (counter == (SCALE-1)); // 115200 baud
+    2'b01 : next_scaled = (counter == (2*SCALE-1)); // 57600 baud
+    2'b10 : next_scaled = (counter == (3*SCALE-1)); // 38400 baud
+    2'b11 : next_scaled = (counter == (6*SCALE-1)); // 19200 baud
   endcase
 
   next_counter = counter + 1'b1;
@@ -67,3 +67,4 @@ begin
 end
 */
 endmodule
+

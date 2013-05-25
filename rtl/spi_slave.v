@@ -2,7 +2,7 @@
 // spi_slave.v
 //
 // Copyright (C) 2006 Michael Poppitz
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
@@ -52,11 +52,11 @@ module spi_slave (
 // TODO: recode SPI into SPI clock synchronous code, use CDC for data bytes
 // reg [7:0] spi_cnt;
 // reg [7:0] spi_byte;
-// 
+//
 // always @ (posedge spi_sclk, posedge spi_cs_n)
 // if (spi_cs_n) spi_cnt <= 0;
 // else          spi_cnt <= spi_cnt + 'b1;
-// 
+//
 // always @ (posedge spi_sclk)
 // spi_byte <= {spi_byte[6:0], spi_mosi};
 
@@ -66,10 +66,10 @@ module spi_slave (
 //
 // Registers...
 //
-reg query_id; 
+reg query_id;
 reg query_metadata;
-reg query_dataIn; 
-reg dly_execute; 
+reg query_dataIn;
+reg dly_execute;
 
 wire [7:0] opcode;
 wire [31:0] opdata;
@@ -129,7 +129,7 @@ spi_transmitter spi_transmitter(
   .send_valid   (send_valid),
   .writeMeta    (writeMeta),
   .meta_data    (meta_data),
-  .query_id     (query_id), 
+  .query_id     (query_id),
   .query_dataIn (query_dataIn),
   .dataIn       (dataIn),
   .busy         (busy),
@@ -139,18 +139,19 @@ spi_transmitter spi_transmitter(
 //
 // Process special SPI commands not handled by core decoder...
 //
-always @(posedge clk) 
+always @(posedge clk)
 begin
   dly_execute    <= execute;
   if (!dly_execute && execute) begin
     query_id       <= (opcode == 8'h02);
-    query_metadata <= (opcode == 8'h04); 
+    query_metadata <= (opcode == 8'h04);
     query_dataIn   <= (opcode == 8'h06);
   end else begin
-    query_id       <= 1'b0; 
+    query_id       <= 1'b0;
     query_metadata <= 1'b0;
     query_dataIn   <= 1'b0;
   end
 end
 
 endmodule
+

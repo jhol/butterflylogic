@@ -2,7 +2,7 @@
 // stage.vhd
 //
 // Copyright (C) 2006 Michael Poppitz
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
@@ -41,9 +41,9 @@
 // can easily be software compensated. (By adjusting the before/after ratio.)
 //--------------------------------------------------------------------------------
 //
-// 12/29/2010 - Ian Davis (IED) - Verilog version, changed to use LUT based 
+// 12/29/2010 - Ian Davis (IED) - Verilog version, changed to use LUT based
 //    masked comparisons, and other cleanups created - mygizmos.org
-// 
+//
 
 `timescale 1ns/100ps
 
@@ -53,12 +53,12 @@ module stage(
   input  wire        rst,
   // input stream
   input  wire        validIn,
-  input  wire [31:0] dataIn,		// Channel data...
+  input  wire [31:0] dataIn,    // Channel data...
   //
-  input  wire        wrenb,			// LUT update write enb
-  input  wire  [7:0] din,		// LUT update data.  All 8 LUT's are updated simultaneously.
-  input  wire        wrConfig,			// Write the trigger config register
-  input  wire [31:0] config_data,	// Data to write into trigger config regs
+  input  wire        wrenb,     // LUT update write enb
+  input  wire  [7:0] din,   // LUT update data.  All 8 LUT's are updated simultaneously.
+  input  wire        wrConfig,      // Write the trigger config register
+  input  wire [31:0] config_data, // Data to write into trigger config regs
   input  wire        arm,
   input  wire        demux_mode,
   input  wire  [1:0] level,
@@ -73,7 +73,7 @@ localparam FALSE = 1'b0;
 // Registers...
 //
 reg [27:0] configRegister;
-reg [15:0] counter, next_counter; 
+reg [15:0] counter, next_counter;
 
 reg [31:0] shiftRegister;
 reg match32Register;
@@ -93,7 +93,7 @@ wire [15:0] cfgDelay   = configRegister[15:0];
 //
 // Handle mask, value & config register write requests
 //
-always @ (posedge clk) 
+always @ (posedge clk)
 configRegister <= (wrConfig) ? config_data[27:0] : configRegister;
 
 //
@@ -120,7 +120,7 @@ wire matchH16 = &matchLUT[7:4];
 //
 // In demux mode only one half must match, in normal mode both words must match...
 //
-always @(posedge clk) 
+always @(posedge clk)
 if (demux_mode) match32Register <= matchH16 | matchL16;
 else            match32Register <= matchH16 & matchL16;
 
@@ -132,7 +132,7 @@ wire serialChannelH16 = dataIn[{1'b1,cfgChannel[3:0]}];
 
 //
 // Shift in bit from selected channel whenever dataIn is ready...
-always @(posedge clk) 
+always @(posedge clk)
 if (validIn) begin
   // in demux mode two bits come in per sample
   if (demux_mode) shiftRegister <= {shiftRegister,                   serialChannelH16,  serialChannelL16};
@@ -150,7 +150,7 @@ localparam [1:0]
 reg [1:0] state, next_state;
 
 initial state = OFF;
-always @(posedge clk, posedge rst) 
+always @(posedge clk, posedge rst)
 if (rst) begin
   state   <= OFF;
   counter <= 0;
@@ -171,32 +171,33 @@ begin
   next_run = FALSE;
 
   case (state) // synthesis parallel_case
-    OFF : 
+    OFF :
       begin
         if (arm) next_state = ARMED;
       end
 
-    ARMED : 
+    ARMED :
       begin
         next_counter = cfgDelay;
-        if (match32Register && (level >= cfgLevel)) 
+        if (match32Register && (level >= cfgLevel))
           next_state = MATCHED;
       end
 
-    MATCHED : 
+    MATCHED :
       begin
         if (validIn)
-	  begin
+    begin
             next_counter = counter-1'b1;
             if (~|counter)
-	      begin
+        begin
                 next_run = cfgStart;
                 next_match = ~cfgStart;
                 next_state = OFF;
               end
-	  end
+    end
       end
   endcase
 end
 
 endmodule
+

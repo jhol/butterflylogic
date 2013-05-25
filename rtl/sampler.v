@@ -2,7 +2,7 @@
 // sampler.vhd
 //
 // Copyright (C) 2006 Michael Poppitz
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
@@ -36,7 +36,7 @@
 //--------------------------------------------------------------------------------
 //
 // 12/29/2010 - Verilog Version + cleanups created by Ian Davis (IED) - mygizmos.org
-// 
+//
 
 `timescale 1ns/100ps
 
@@ -45,18 +45,18 @@ module sampler #(
   parameter integer CW = 24   // counter width
 )(
   // system signas
-  input  wire          clk, 		// clock
-  input  wire          rst, 		// reset
+  input  wire          clk,     // clock
+  input  wire          rst,     // reset
   // configuration/control signals
-  input  wire          extClock_mode,	// clock selection
-  input  wire          wrDivider, 	// write divider register
-  input  wire [CW-1:0] config_data, 	// configuration data
+  input  wire          extClock_mode, // clock selection
+  input  wire          wrDivider,   // write divider register
+  input  wire [CW-1:0] config_data,   // configuration data
   // input stream
-  input  wire          sti_valid,	// sti_data is valid
-  input  wire [DW-1:0] sti_data, 	// 32 input channels
+  input  wire          sti_valid, // sti_data is valid
+  input  wire [DW-1:0] sti_data,  // 32 input channels
   // output stream
-  output reg           sto_valid, 	// new sample ready
-  output reg  [DW-1:0] sto_data, 	// sampled data
+  output reg           sto_valid,   // new sample ready
+  output reg  [DW-1:0] sto_data,  // sampled data
   output reg           ready50
 );
 
@@ -66,8 +66,8 @@ module sampler #(
 reg next_sto_valid;
 reg [DW-1:0] next_sto_data;
 
-reg [CW-1:0] divider, next_divider; 
-reg [CW-1:0] counter, next_counter;	// Made counter decrementing.  Better synth.
+reg [CW-1:0] divider, next_divider;
+reg [CW-1:0] counter, next_counter; // Made counter decrementing.  Better synth.
 wire counter_zero = ~|counter;
 
 
@@ -81,7 +81,7 @@ begin
   sto_valid = 0;
   sto_data = 0;
 end
-always @ (posedge clk) 
+always @ (posedge clk)
 begin
   divider   <= next_divider;
   counter   <= next_counter;
@@ -116,7 +116,7 @@ begin
       next_counter = next_divider;
       next_sto_valid = 1'b0; // reset
     end
-  else if (sti_valid) 
+  else if (sti_valid)
     if (counter_zero)
       next_counter = divider;
     else next_counter = counter-1'b1;
@@ -126,7 +126,7 @@ end
 //
 // Generate ready50 50% duty cycle sample signal...
 //
-always @(posedge clk) 
+always @(posedge clk)
 begin
   if (wrDivider)
     ready50 <= 1'b0; // reset
@@ -137,3 +137,4 @@ begin
 end
 
 endmodule
+

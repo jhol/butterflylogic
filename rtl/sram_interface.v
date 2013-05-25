@@ -2,7 +2,7 @@
 //
 // sram_interface.v
 // Copyright (C) 2011 Ian Davis
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
@@ -19,7 +19,7 @@
 //
 //--------------------------------------------------------------------------------
 //
-// Details: 
+// Details:
 //   http://www.dangerousprototypes.com/ols
 //   http://www.gadgetfactory.net/gf/project/butterflylogic
 //   http://www.mygizmos.org/ols
@@ -79,7 +79,7 @@ wire addrzero = ~|address;
 //
 // Control logic...
 //
-initial 
+initial
 begin
   init = 1'b0;
   mode = 2'b00;
@@ -128,7 +128,7 @@ begin
 
       // The clkenb register normally indicates which bytes are valid during a read.
       // However in 24-bit mode, all 32-bits of BRAM are being used.  Thus we need to
-      // tweak things a bit.  Since data is aligned (see data_align.v), all we need 
+      // tweak things a bit.  Since data is aligned (see data_align.v), all we need
       // do is ignore the MSB here...
       next_validmask = 4'hF;
       case (config_data)
@@ -138,10 +138,10 @@ begin
 
   //
   // Handle writes & reads.  Fill a given line of RAM completely before
-  // moving onward.   
+  // moving onward.
   //
-  // This differs from the original SUMP storage which wrapped around 
-  // before changing clock enables.  Client sees no difference. However, 
+  // This differs from the original SUMP storage which wrapped around
+  // before changing clock enables.  Client sees no difference. However,
   // it'll eventally allow easier streaming of data to the client...
   //
   casex ({write && !lastwrite, rd_ready})
@@ -155,7 +155,7 @@ begin
         if (clkenb[3]) next_address = (maxaddr) ? 0 : address+1'b1;
       end
 
-    2'bx1 : 
+    2'bx1 :
       begin
         next_clkenb = 4'b1111;
         casex (mode[1:0])
@@ -169,9 +169,9 @@ begin
   //
   // Reset clock enables & ram address...
   //
-  if (init) 
+  if (init)
     begin
-      next_clkenb = 4'b1111; 
+      next_clkenb = 4'b1111;
       casex (mode[1:0])
         2'bx1 : next_clkenb = 4'b0001; // 1 byte writes
         2'b1x : next_clkenb = 4'b0011; // 2 byte writes
@@ -241,3 +241,4 @@ endgenerate
 `endif
 
 endmodule
+

@@ -2,7 +2,7 @@
 //
 // trigger_adv.v
 // Copyright (C) 2011 Ian Davis
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
@@ -46,12 +46,12 @@
 // The FPGA is normally configured from the external serial FLASH flash chip
 // by connecting all internal parts into one massive shift register.
 //
-// Lucky for us, its possible to use that feature on individual LUT's.  Thus 
+// Lucky for us, its possible to use that feature on individual LUT's.  Thus
 // the advanced triggers can be organized using blocks of long shift registers.
 // This approach might seem painful, but it saves huge amounts of FPGA logic.
 //
-// There are 64 trigger shift register chains, encompassing 11094 config bits. 
-// There are also DWORD values stored for FSM states & timer limits.  Combined 
+// There are 64 trigger shift register chains, encompassing 11094 config bits.
+// There are also DWORD values stored for FSM states & timer limits.  Combined
 // they total 11678 config bits.  :-)
 //
 //
@@ -62,7 +62,7 @@
 // followed by one or more Write-Chain commands.  Each data write adds
 // 32-bits to the selected serial shift-register chain.
 //
-// Exceptions are the FSM state configs & timer limits, which are DWORD values 
+// Exceptions are the FSM state configs & timer limits, which are DWORD values
 // stored directly.  However, the client sees no difference (just more writes
 // to trigger config regs).
 //
@@ -90,7 +90,7 @@
 //
 // LUTCHAIN's
 //   0x20      = trigterm a {ax0,ax1,ax2,ax3,ay0,ay1,ay2,ay3) (128 bit chains)
-//   0x21      = trigterm b 
+//   0x21      = trigterm b
 //   0x22      = trigterm c
 //   0x23      = trigterm d
 //   0x24      = trigterm e
@@ -112,8 +112,8 @@
 //   0x3A-0x3B = timer 2 limit (DWORD's)
 //
 //   0x40      = state 0 hit-term {(a,b)(c,range1)(d,edge1)(e,timer1)(f,g)(h,range2)(i,edge2)(h,timer2)(mid1)(mid2)(final)} (176 bits)
-//   0x41      = state 0 else-term 
-//   0x42      = state 0 capture-term 
+//   0x41      = state 0 else-term
+//   0x42      = state 0 capture-term
 //   0x44-0x46 = state 1 terms
 //   0x48-0x4A = state 2 terms
 //   0x4C-0x4E = state 3 terms
@@ -147,10 +147,10 @@ module trigger_adv #(
   input  wire   [31:0] config_data,
   // input stream
   input  wire          sti_valid,
-  input  wire [DW-1:0] sti_data,		// Channel data...
+  input  wire [DW-1:0] sti_data,    // Channel data...
   //
-  output reg           run,			// Full capture
-  output reg           capture			// Single capture
+  output reg           run,     // Full capture
+  output reg           capture      // Single capture
 );
 
 //
@@ -178,8 +178,8 @@ pipeline_stall #(.DELAY(2)) dly_sti_valid_reg (clk, rst, sti_valid, dly_sti_vali
 //
 // Shift register initialization handler for LUT chains...
 //
-initial 
-begin 
+initial
+begin
   wrcount=0;
   wraddr=0;
   wrdata=0;
@@ -236,7 +236,7 @@ ram_dword fsm_ram (clk, fsm_ramaddr, wrenb_fsm, config_data, fsm_state);
 
 
 //
-// Decode FSM state flags: 
+// Decode FSM state flags:
 //   {Trigger, StartTimer[2:1], ClearTimer[2:1], StopTimer[2:1], ElseNextState[3:0], Count[19:0]}
 //
 wire fsm_laststate;
@@ -250,10 +250,10 @@ wire fsm_stop_timer2;
 wire [3:0] fsm_else_state;
 wire [19:0] fsm_count;
 assign {
-  fsm_laststate, fsm_trigger, 
-  fsm_start_timer2, fsm_start_timer1, 
-  fsm_clear_timer2, fsm_clear_timer1, 
-  fsm_stop_timer2, fsm_stop_timer1, 
+  fsm_laststate, fsm_trigger,
+  fsm_start_timer2, fsm_start_timer1,
+  fsm_clear_timer2, fsm_clear_timer1,
+  fsm_stop_timer2, fsm_stop_timer1,
   fsm_else_state[3:0], fsm_count[19:0]} = fsm_state;
 
 
@@ -273,12 +273,12 @@ begin
     endcase
 end
 
-timer timer1 (clk, rst, wrenb_timer[0], wraddr[0], config_data, 
-  update_timers, fsm_start_timer1, fsm_clear_timer1, fsm_stop_timer1, 
+timer timer1 (clk, rst, wrenb_timer[0], wraddr[0], config_data,
+  update_timers, fsm_start_timer1, fsm_clear_timer1, fsm_stop_timer1,
   timer1_elapsed);
 
-timer timer2 (clk, rst, wrenb_timer[1], wraddr[0], config_data, 
-  update_timers, fsm_start_timer2, fsm_clear_timer2, fsm_stop_timer2, 
+timer timer2 (clk, rst, wrenb_timer[1], wraddr[0], config_data,
+  update_timers, fsm_start_timer2, fsm_clear_timer2, fsm_stop_timer2,
   timer2_elapsed);
 
 
@@ -288,16 +288,16 @@ timer timer2 (clk, rst, wrenb_timer[1], wraddr[0], config_data,
 //
 wire hit_term, else_term, capture_term;
 trigterms trigterms (
-  clk, sti_data, timer1_elapsed, timer2_elapsed, 
-  wrenb, wraddr, wrdata[31], 
+  clk, sti_data, timer1_elapsed, timer2_elapsed,
+  wrenb, wraddr, wrdata[31],
   state, {capture_term, else_term, hit_term});
 
 
 //
 // Control FSM...
 //
-initial 
-begin 
+initial
+begin
   active = 1'b0;
   finished = 1'b0;
   force_capture = 1'b0;
@@ -335,24 +335,24 @@ begin
       next_capture = capture_term || force_capture;
       if (!finished)
         if (hit_term)
-	  begin
-	    next_hit_count = hit_count+1'b1;
-	    if (hit_count==fsm_count)
-	      begin
-	        update_timers = 1'b1;
-	        next_hit_count = 0;
-	        if (fsm_trigger || fsm_laststate || last_state) // trigger if requested, or fsm tries to wrap-around
-  		  next_run = 1'b1;
-  	        if (fsm_laststate || last_state) // no wrapping around
-		  next_finished = 1'b1;
-	        else next_state = state + 1;
-	      end
-	  end
-        else if (else_term) 
-	  begin
-	    next_hit_count = 0;
-	    next_state = fsm_else_state;
-	  end
+    begin
+      next_hit_count = hit_count+1'b1;
+      if (hit_count==fsm_count)
+        begin
+          update_timers = 1'b1;
+          next_hit_count = 0;
+          if (fsm_trigger || fsm_laststate || last_state) // trigger if requested, or fsm tries to wrap-around
+        next_run = 1'b1;
+            if (fsm_laststate || last_state) // no wrapping around
+      next_finished = 1'b1;
+          else next_state = state + 1;
+        end
+    end
+        else if (else_term)
+    begin
+      next_hit_count = 0;
+      next_state = fsm_else_state;
+    end
     end
 
   if (active && finish_now)
@@ -387,8 +387,8 @@ module trigterms (
   input  wire        wrenb,
   input  wire  [6:0] wraddr,
   input  wire        din,
-  input  wire  [3:0] state,	// Current trigger state
-  output wire  [2:0] hit	// Hits matching trigger state summing-terms
+  input  wire  [3:0] state, // Current trigger state
+  output wire  [2:0] hit  // Hits matching trigger state summing-terms
 );
 
 reg [15:0] wrenb_term;
@@ -399,8 +399,8 @@ begin
   wrenb_term = 0;
   wrenb_range_edge = 0;
   wrenb_state = 0;
-  casex (wraddr[6:3]) 
-    4'b010x : wrenb_term[wraddr[3:0]] = wrenb; 	     // 0x20-0x2F
+  casex (wraddr[6:3])
+    4'b010x : wrenb_term[wraddr[3:0]] = wrenb;       // 0x20-0x2F
     4'b0110 : wrenb_range_edge[wraddr[2:0]] = wrenb; // 0x30-0x37
     4'b1xxx : wrenb_state[wraddr[5:2]] = wrenb;      // 0x40-0x7F
   endcase
@@ -421,7 +421,7 @@ trigterm_32bit termi (sti_data, clk, wrenb_term[8] || wrenb_term[15], din, termi
 trigterm_32bit termj (sti_data, clk, wrenb_term[9] || wrenb_term[15], din, termj_dout, termj_hit);
 
 trigterm_range range1l (sti_data, clk, wrenb_range_edge[0], din, range1_lower); // lower = datain>target
-trigterm_range range1u (sti_data, clk, wrenb_range_edge[1], din, range1_upper); 
+trigterm_range range1u (sti_data, clk, wrenb_range_edge[1], din, range1_upper);
 trigterm_range range2l (sti_data, clk, wrenb_range_edge[2], din, range2_lower);
 trigterm_range range2u (sti_data, clk, wrenb_range_edge[3], din, range2_upper);
 
@@ -464,14 +464,14 @@ assign term_hits[5] = &termc_hit[7:4];
 assign term_hits[4] = &termc_hit[3:0];
 assign term_hits[3] = &termb_hit[7:4];
 assign term_hits[2] = &termb_hit[3:0];
-assign term_hits[1] = &terma_hit[7:4]; 
+assign term_hits[1] = &terma_hit[7:4];
 assign term_hits[0] = &terma_hit[3:0];
 
 wire [31:0] sampled_term_hits;
 dly_signal #(32) sampled_term_hits_reg (clk, term_hits, sampled_term_hits);
 
 wire [31:0] use_term_hits = {
-  timer2_hit, timer2_hit, sampled_term_hits[29:16], 
+  timer2_hit, timer2_hit, sampled_term_hits[29:16],
   timer1_hit, timer1_hit, sampled_term_hits[13:0]};
 
 wire [2:0] state_hit[0:15];
@@ -521,7 +521,7 @@ reg [3:0] wrenb_sum;
 always @*
 begin
   wrenb_sum = 0;
-  wrenb_sum[wraddr] = wrenb;	
+  wrenb_sum[wraddr] = wrenb;
 end
 
 trigsum hit_sum (term_hits, clk, wrenb_sum[0], din, hit_term);
@@ -576,7 +576,7 @@ trigterm_4bit nyb7 (sti_data[31:28], clk, wrenb, n[6], dout, hit[7]);
 endmodule
 
 //
-// Mask & compare 4 bits of input data.  
+// Mask & compare 4 bits of input data.
 // 16 bit serial cfg chain.
 //
 module trigterm_4bit (
@@ -728,3 +728,4 @@ always @ (posedge clk)
 rddata <= mem[addr];
 
 endmodule
+

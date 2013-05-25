@@ -2,7 +2,7 @@
 // eia232.vhd
 //
 // Copyright (C) 2006 Michael Poppitz
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
@@ -26,7 +26,7 @@
 //--------------------------------------------------------------------------------
 //
 // 12/29/2010 - Verilog Version + cleanups created by Ian Davis - mygizmos.org
-// 
+//
 
 `timescale 1ns/100ps
 
@@ -38,22 +38,22 @@ module eia232 #(
 )(
   input  wire        clock,
   input  wire        reset,
-  input  wire  [1:0] speed,	// UART speed
-  input  wire        send,	// Send data output serial tx
-  input  wire [31:0] wrdata,	// Data to be sent
-  input  wire        rx,	// Serial RX
-  output wire        tx,	// Serial TX
+  input  wire  [1:0] speed, // UART speed
+  input  wire        send,  // Send data output serial tx
+  input  wire [31:0] wrdata,  // Data to be sent
+  input  wire        rx,  // Serial RX
+  output wire        tx,  // Serial TX
   output wire [39:0] cmd,
-  output wire        execute,	// Cmd is valid
-  output wire        busy	// Indicates transmitter busy
+  output wire        execute, // Cmd is valid
+  output wire        busy // Indicates transmitter busy
 );
 
-wire trxClock; 
-reg id, next_id; 
-reg xon, next_xon; 
-reg xoff, next_xoff; 
+wire trxClock;
+reg id, next_id;
+reg xon, next_xon;
+reg xoff, next_xoff;
 reg wrFlags, next_wrFlags;
-reg dly_execute, next_dly_execute; 
+reg dly_execute, next_dly_execute;
 reg [3:0] disabledGroupsReg, next_disabledGroupsReg;
 
 wire [7:0] opcode;
@@ -64,7 +64,7 @@ assign cmd = {opdata,opcode};
 //
 // Process special uart commands that do not belong in core decoder...
 //
-always @(posedge clock) 
+always @(posedge clock)
 begin
   id                <= next_id;
   xon               <= next_xon;
@@ -107,7 +107,7 @@ prescaler #(
 );
 
 //
-// Instantiate serial-to-parallel receiver.  
+// Instantiate serial-to-parallel receiver.
 // Asserts "execute" whenever valid 8-bit value received.
 //
 receiver #(
@@ -146,3 +146,4 @@ transmitter #(
 );
 
 endmodule
+

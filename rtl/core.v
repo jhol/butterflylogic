@@ -2,7 +2,7 @@
 // core.vhd
 //
 // Copyright (C) 2006 Michael Poppitz
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
@@ -31,7 +31,7 @@
 //--------------------------------------------------------------------------------
 //
 // 12/29/2010 - Verilog Version + cleanups created by Ian Davis - mygizmos.org
-// 
+//
 
 `timescale 1ns/100ps
 //`define HEARTBEAT
@@ -82,7 +82,7 @@ wire [SDW-1:0] cdc_data;
 wire           cdc_ready;
 // data stream (sample -> trigger, delay)
 wire           sample_valid;
-wire [SDW-1:0] sample_data; 
+wire [SDW-1:0] sample_data;
 //wire           sample_ready;
 // data stream (delay -> allign)
 wire           delay_valid;
@@ -91,15 +91,15 @@ wire [SDW-1:0] delay_data;
 wire           align_valid;
 wire [SDW-1:0] align_data;
 // data stream (rle -> controller)
-wire          rle_valid; 
+wire          rle_valid;
 wire [SDW-1:0] rle_data;
 
 
-wire  [3:0] wrtrigmask; 
-wire  [3:0] wrtrigval; 
+wire  [3:0] wrtrigmask;
+wire  [3:0] wrtrigval;
 wire  [3:0] wrtrigcfg;
-wire        wrDivider; 
-wire        wrsize; 
+wire        wrDivider;
+wire        wrsize;
 
 wire arm_basic, arm_adv;
 wire arm = arm_basic | arm_adv;
@@ -112,7 +112,7 @@ wire sti_rst;
 wire resetCmd;
 wire reset = sys_rst | resetCmd;
 
-reset_sync reset_sync_core   (sys_clk, reset     , reset_core  ); 
+reset_sync reset_sync_core   (sys_clk, reset     , reset_core  );
 reset_sync reset_sync_sample (sti_clk, reset_core, sti_rst);
 
 
@@ -135,7 +135,7 @@ wire [1:0] rle_mode = flags_reg[15:14];            // Change how RLE logic issue
 //
 // Sample external trigger signals...
 //
-wire run_basic, run_adv, run; 
+wire run_basic, run_adv, run;
 dly_signal extTriggerIn_reg  (sys_clk, extTriggerIn, sampled_extTriggerIn);
 dly_signal extTriggerOut_reg (sys_clk, run, extTriggerOut);
 
@@ -222,7 +222,7 @@ sync #(
 );
 
 //
-// Transfer from input clock (whatever it may be) to the core clock 
+// Transfer from input clock (whatever it may be) to the core clock
 // (used for everything else, including RLE counts)...
 //
 cdc #(
@@ -354,7 +354,7 @@ data_align data_align (
 );
 
 //
-// Detect duplicate data & insert RLE counts (if enabled)... 
+// Detect duplicate data & insert RLE counts (if enabled)...
 // Requires client software support to decode.
 //
 rle_enc rle_enc (
@@ -375,24 +375,24 @@ rle_enc rle_enc (
 );
 
 //
-// Delay run (trigger) pulse to complensate for 
+// Delay run (trigger) pulse to complensate for
 // data_align & rle_enc delay...
 //
 pipeline_stall #(
   .DELAY  (2)
 ) dly_arm_reg (
-  .clk     (sys_clk), 
-  .reset   (reset_core), 
-  .datain  (arm), 
+  .clk     (sys_clk),
+  .reset   (reset_core),
+  .datain  (arm),
   .dataout (dly_arm)
 );
 
 pipeline_stall #(
   .DELAY  (1)
 ) dly_run_reg (
-  .clk     (sys_clk), 
-  .reset   (reset_core), 
-  .datain  (run), 
+  .clk     (sys_clk),
+  .reset   (reset_core),
+  .datain  (run),
   .dataout (dly_run));
 
 //
@@ -417,4 +417,5 @@ controller controller(
   .memoryLastWrite (memoryLastWrite));
 
 endmodule
+
 

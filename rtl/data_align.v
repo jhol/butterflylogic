@@ -2,7 +2,7 @@
 //
 // data_align.v
 // Copyright (C) 2011 Ian Davis
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
@@ -19,7 +19,7 @@
 //
 //--------------------------------------------------------------------------------
 //
-// Details: 
+// Details:
 //   http://www.dangerousprototypes.com/ols
 //   http://www.gadgetfactory.net/gf/project/butterflylogic
 //   http://www.mygizmos.org/ols
@@ -27,10 +27,10 @@
 // This module takes the sampled input, and shifts/compacts the data to
 // eliminate any disabled groups. ie:
 //
-//   Channels 0,1,2 are disabled:  
+//   Channels 0,1,2 are disabled:
 //     sto_data[7:0] = channel3     (sti_data[31:24])
 //
-//   Channels 1,2 are disabled:    
+//   Channels 1,2 are disabled:
 //     sto_data[15:0] = {channel3,channel0}   (sti_data[31:24],sti_data[7:0])
 //
 // Compacting the data like this allows for easier RLE & filling of SRAM.
@@ -97,10 +97,10 @@ end
 //
 // Each "insel" signal controls the select for an output mux.
 //
-// ie: insel0 controls what is -output- on bits[7:0].   
+// ie: insel0 controls what is -output- on bits[7:0].
 //     Thus, if insel0 equal 2, sto_data[7:0] = sti_data[23:16]
 //
-always @(posedge clk) 
+always @(posedge clk)
 begin
   case (disabledGroups)
     // 24 bit configs...
@@ -123,8 +123,9 @@ begin
   endcase
 end
 
-always @(posedge clk, posedge rst) 
+always @(posedge clk, posedge rst)
 if (rst)  sto_valid <= 1'b0;
 else      sto_valid <= sti_valid;
 
 endmodule
+

@@ -2,7 +2,7 @@
 // Logic_Sniffer.vhd
 //
 // Copyright (C) 2006 Michael Poppitz
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
@@ -25,7 +25,7 @@
 // dependend IO modules and defines all inputs and outputs that represent
 // phyisical pins of the fpga.
 //
-// It defines two constants FREQ and RATE. The first is the clock frequency 
+// It defines two constants FREQ and RATE. The first is the clock frequency
 // used for receiver and transmitter for generating the proper baud rate.
 // The second defines the speed at which to operate the serial port.
 //
@@ -36,7 +36,7 @@
 
 `timescale 1ns/100ps
 
-`define COMM_TYPE_SPI 1		// comment out for UART mode
+`define COMM_TYPE_SPI 1   // comment out for UART mode
 
 module Logic_Sniffer #(
 `ifdef COMM_TYPE_SPI
@@ -60,7 +60,7 @@ module Logic_Sniffer #(
   output wire        extTriggerOut,
   //
   inout  wire [31:0] extData,
-  // 
+  //
   output wire        dataReady,
   output wire        armLEDnn,
   output wire        triggerLEDnn,
@@ -98,12 +98,12 @@ wire extTestMode;
 
 wire [39:0] cmd;
 wire [31:0] sram_wrdata;
-wire [31:0] sram_rddata; 
+wire [31:0] sram_rddata;
 wire  [3:0] sram_rdvalid;
 wire [31:0] stableInput;
 
 wire  [7:0] opcode;
-wire [31:0] config_data; 
+wire [31:0] config_data;
 
 assign {config_data,opcode} = cmd;
 
@@ -193,7 +193,7 @@ ODDR2 ODDR2 (
 // Configure the probe pins...
 //
 reg [10:0] test_counter;
-always @ (posedge sys_clk, posedge sys_rst) 
+always @ (posedge sys_clk, posedge sys_rst)
 if (sys_rst) test_counter <= 'b0;
 else         test_counter <= test_counter + 'b1;
 wire [15:0] test_pattern = {8{test_counter[10], test_counter[4]}};
@@ -223,14 +223,14 @@ IBUF #(
   .O  (sti_data[15:0]),           // Buffer output
   .I  (extData [15:0])            // Buffer input port (connect directly to top-level port)
 );
-    
+
 IDDR2 #(
-  .DDR_ALIGNMENT ("NONE"), // Sets output alignment to "NONE", "C0" or "C1" 
+  .DDR_ALIGNMENT ("NONE"), // Sets output alignment to "NONE", "C0" or "C1"
   .INIT_Q0       (1'b0),   // Sets initial state of the Q0 output to 1'b0 or 1'b1
   .INIT_Q1       (1'b0),   // Sets initial state of the Q1 output to 1'b0 or 1'b1
   .SRTYPE        ("SYNC")  // Specifies "SYNC" or "ASYNC" set/reset
 ) IDDR2 [31:0] (
-  .Q0 (sti_data_p), // 1-bit output captured with C0 clock 
+  .Q0 (sti_data_p), // 1-bit output captured with C0 clock
   .Q1 (sti_data_n), // 1-bit output captured with C1 clock
   .C0 (sti_clk_p),  // 1-bit clock input
   .C1 (sti_clk_n),  // 1-bit clock input
@@ -254,25 +254,25 @@ dly_signal dataReady_reg (sys_clk, busy, dataReady);
 
 spi_slave spi_slave (
   // system signals
-  .clk        (sys_clk), 
+  .clk        (sys_clk),
   .rst        (sys_rst),
   // input stream
   .dataIn     (stableInput),
-  .send       (send), 
-  .send_data  (sram_rddata), 
+  .send       (send),
+  .send_data  (sram_rddata),
   .send_valid (sram_rdvalid),
   // output configuration
   .cmd        (cmd),
-  .execute    (execute), 
+  .execute    (execute),
   .busy       (busy),
   // SPI signals
-  .spi_sclk   (spi_sclk), 
+  .spi_sclk   (spi_sclk),
   .spi_cs_n   (spi_cs_n),
   .spi_mosi   (spi_mosi),
   .spi_miso   (spi_miso)
 );
 
-`else 
+`else
 
 eia232 #(
   .FREQ     (FREQ),
@@ -291,7 +291,7 @@ eia232 #(
   .busy     (busy)
 );
 
-`endif 
+`endif
 
 //
 // Instantiate core...
@@ -339,7 +339,7 @@ sram_interface sram_interface (
   .clk          (sys_clk),
   .rst          (sys_rst),
   // configuration/control signals
-  .wrFlags      (wrFlags), 
+  .wrFlags      (wrFlags),
   .config_data  (config_data[5:2]),
   // write interface
   .write        (write),
@@ -353,3 +353,4 @@ sram_interface sram_interface (
 );
 
 endmodule
+

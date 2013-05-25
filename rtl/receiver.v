@@ -2,7 +2,7 @@
 // receiver.vhd
 //
 // Copyright (C) 2006 Michael Poppitz
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
@@ -70,11 +70,11 @@ reg next_execute;
 assign op = opcode;
 assign data = databuf;
 
-always @(posedge clock, posedge reset) 
+always @(posedge clock, posedge reset)
 if (reset) state <= INIT;
 else       state <= next_state;
 
-always @(posedge clock) 
+always @(posedge clock)
 begin
   counter   <= next_counter;
   bitcount  <= next_bitcount;
@@ -95,69 +95,69 @@ begin
   next_execute = 1'b0;
 
   case(state)
-    INIT : 
+    INIT :
       begin
         next_counter = 0;
         next_bitcount = 0;
-	next_bytecount = 0;
-	next_opcode = 0;
+  next_bytecount = 0;
+  next_opcode = 0;
         next_databuf = 0;
-	next_state = WAITSTOP; 
+  next_state = WAITSTOP;
       end
 
     WAITSTOP : // reset uart
       begin
-	if (rx) next_state = WAITSTART; 
+  if (rx) next_state = WAITSTART;
       end
 
     WAITSTART : // wait for start bit
       begin
-	if (!rx) next_state = WAITBEGIN; 
+  if (!rx) next_state = WAITBEGIN;
       end
 
     WAITBEGIN : // wait for first half of start bit
       begin
-	if (counter == (BITLENGTH / 2)) 
-	  begin
-	    next_counter = 0;
-	    next_state = READBYTE;
-	  end
-	else if (trxClock) 
-	  next_counter = counter + 1;
+  if (counter == (BITLENGTH / 2))
+    begin
+      next_counter = 0;
+      next_state = READBYTE;
+    end
+  else if (trxClock)
+    next_counter = counter + 1;
       end
 
     READBYTE : // receive byte
       begin
-	if (counter == BITLENGTH) 
-	  begin
-	    next_counter = 0;
-	    next_bitcount = bitcount + 1;
-	    if (bitcount == 4'h8) 
-	      begin
-		next_bytecount = bytecount + 1;
-		next_state = ANALYZE;
-	      end
-	    else if (bytecount == 0) 
-	      begin
-		next_opcode = {rx,opcode[7:1]};
-		next_databuf = databuf;
-	      end
-	    else 
-	      begin
-		next_opcode = opcode;
-		next_databuf = {rx,databuf[31:1]};
-	      end
-	  end
-	else if (trxClock)
-	  next_counter = counter + 1;
+  if (counter == BITLENGTH)
+    begin
+      next_counter = 0;
+      next_bitcount = bitcount + 1;
+      if (bitcount == 4'h8)
+        begin
+    next_bytecount = bytecount + 1;
+    next_state = ANALYZE;
+        end
+      else if (bytecount == 0)
+        begin
+    next_opcode = {rx,opcode[7:1]};
+    next_databuf = databuf;
+        end
+      else
+        begin
+    next_opcode = opcode;
+    next_databuf = {rx,databuf[31:1]};
+        end
+    end
+  else if (trxClock)
+    next_counter = counter + 1;
       end
 
     ANALYZE : // check if long or short command has been fully received
       begin
-	next_counter = 0;
-	next_bitcount = 0;
+  next_counter = 0;
+  next_bitcount = 0;
         if (bytecount == 3'h5) // long command when 5 bytes have been received
-	  next_state = READY;
+    next_state = READY;
         else if (!opcode[7]) // short command when set flag not set
           next_state = READY;
         else next_state = WAITSTOP; // otherwise continue receiving
@@ -165,10 +165,10 @@ begin
 
     READY : // done, give 10 cycles for processing
       begin
-	next_counter = counter + 1;
-	if (counter == 4'd10)
-	  next_state = INIT;
-	else next_state = state;
+  next_counter = counter + 1;
+  if (counter == 4'd10)
+    next_state = INIT;
+  else next_state = state;
       end
     endcase
 

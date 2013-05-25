@@ -102,7 +102,7 @@ end
 endfunction
 
 // gray increment (with conversion into integer and back to gray)
-function [CW-1:0] gry_inc (input [CW-1:0] gry_gry); 
+function [CW-1:0] gry_inc (input [CW-1:0] gry_gry);
 begin
   gry_inc = int2gry (gry2int (gry_gry) + 'd1);
 end
@@ -230,3 +230,4 @@ else if (ffo_trn)  ffo_gry <= ffo_end ? ffo_gry ^ G0 : gry_inc (ffo_gry);
 assign ffo_vld = ffo_syn [SS-1] != ffo_gry;
 
 endmodule
+

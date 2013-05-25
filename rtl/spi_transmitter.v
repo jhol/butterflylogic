@@ -2,7 +2,7 @@
 // transmitter.v
 //
 // Copyright (C) 2006 Michael Poppitz
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
@@ -58,14 +58,14 @@ reg [3:0] sampled_send_valid, next_sampled_send_valid;
 reg [2:0] bits, next_bits;
 reg [1:0] bytesel, next_bytesel;
 reg next_byteDone;
-reg dly_sclk, next_dly_sclk; 
+reg dly_sclk, next_dly_sclk;
 reg next_busy;
 
 reg [7:0] txBuffer, next_txBuffer;
 reg next_tx;
 //wire spi_miso = txBuffer[7];
 
-reg writeReset, writeByte; 
+reg writeReset, writeByte;
 
 
 //
@@ -113,7 +113,7 @@ begin
       next_byteDone = 1'b1;
       next_txBuffer = 8'hFF;
     end
-  else if (writeByte) 
+  else if (writeByte)
     begin
       next_bits = 0;
       next_byteDone = disabled;
@@ -125,8 +125,8 @@ begin
       next_byteDone = 0;
       next_txBuffer = meta_data;
     end
- 
-  // The PIC microcontroller asserts CS# in response to FPGA 
+
+  // The PIC microcontroller asserts CS# in response to FPGA
   // asserting dataReady (busy signal from this module actually).
   // Until CS# asserts though keep the bits counter reset...
   if (spi_cs_n) next_bits = 0;
@@ -150,7 +150,7 @@ parameter [1:0] INIT = 0, IDLE = 1, SEND = 2, POLL = 3;
 reg [1:0] state, next_state;
 
 initial state = INIT;
-always @(posedge clk, posedge rst) 
+always @(posedge clk, posedge rst)
 if (rst) begin
   state              <= INIT;
   sampled_send_data  <= 32'h0;
@@ -180,51 +180,52 @@ begin
   case (state) // when write is '1', data will be available with next cycle
     INIT :
       begin
-	writeReset = 1'b1;
+  writeReset = 1'b1;
         next_sampled_send_data = 32'h0;
         next_sampled_send_valid = 4'hF;
         next_bytesel = 3'h0;
         next_busy = 1'b0;
-	next_state = IDLE;
+  next_state = IDLE;
       end
 
-    IDLE : 
+    IDLE :
       begin
         next_sampled_send_data = send_data;
         next_sampled_send_valid = send_valid;
-	next_bytesel = 0;
+  next_bytesel = 0;
 
-        if (send) 
+        if (send)
           next_state = SEND;
         else if (query_id) // output dword containing "SLA1" signature
-	  begin
+    begin
             next_sampled_send_data = 32'h534c4131; // "SLA1"
             next_sampled_send_valid = 4'hF;
             next_state = SEND;
           end
         else if (query_dataIn)
-	  begin
+    begin
             next_sampled_send_data = dataIn;
             next_sampled_send_valid = 4'hF;
             next_state = SEND;
-	  end
+    end
       end
 
     SEND : // output dword send by controller...
       begin
         writeByte = 1'b1;
         next_bytesel = bytesel + 1'b1;
-	next_state = POLL;
+  next_state = POLL;
       end
 
-    POLL : 
+    POLL :
       begin
         if (byteDone)
-	  next_state = (~|bytesel) ? IDLE : SEND;
+    next_state = (~|bytesel) ? IDLE : SEND;
       end
 
     default : next_state = INIT;
   endcase
 end
 endmodule
+
 

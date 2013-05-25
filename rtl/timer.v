@@ -2,7 +2,7 @@
 //
 // timer.v
 // Copyright (C) 2011 Ian Davis
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
@@ -19,7 +19,7 @@
 //
 //--------------------------------------------------------------------------------
 //
-// Details: 
+// Details:
 //   http://www.dangerousprototypes.com/ols
 //   http://www.gadgetfactory.net/gf/project/butterflylogic
 //   http://www.mygizmos.org/ols
@@ -51,8 +51,8 @@ reg next_timer_elapsed;
 //
 // 10ns resolution timer's...
 //
-initial 
-begin 
+initial
+begin
   timer = 36'h0;
   timer_active = 1'b0;
   timer_elapsed = 1'b0;
@@ -74,17 +74,17 @@ begin
   next_timer_elapsed = timer_elapsed;
   next_timer_limit = timer_limit;
 
-  if (timer_active) 
+  if (timer_active)
     begin
       next_timer = timer+1'b1;
-      if (timer >= timer_limit) 
-	begin
-	  next_timer_elapsed = 1'b1;
-	  next_timer_active = 1'b0;
-	end
+      if (timer >= timer_limit)
+  begin
+    next_timer_elapsed = 1'b1;
+    next_timer_active = 1'b0;
+  end
     end
 
-  if (update_timers) 
+  if (update_timers)
     begin
       if (fsm_start_timer) next_timer_active=1'b1;
       if (fsm_clear_timer) begin next_timer=0; next_timer_elapsed=1'b0; end
@@ -106,3 +106,4 @@ begin
 end
 
 endmodule
+
