@@ -19,7 +19,7 @@
 #
 #------------------------------------------------------------------------------
 
-PROJECT_NAME="logic-sniffer"
+PROJECT_NAME="logic_sniffer"
 
 function usage() {
 	cat <<EOF
