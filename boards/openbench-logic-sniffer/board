@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------
 #
 # Copyright (C) 2013 Joel Holdsworth
-#
+# 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or (at
@@ -18,35 +18,6 @@
 #
 #------------------------------------------------------------------------------
 
-include config
-
-help:
-	@echo "  syn: Synthesize the firmware."
-	@echo ""
-	@echo "  clean: Delete all superfluous files generated during build."
-	@echo "  distclean: Delete all generated files"
-
-ifeq "$(BOARD_PATH)" ""
-syn:
-	$(error Unable to synthesise when no board file has been speified)
-else
-
-include $(BOARD_PATH)
-CONSTRAINT_DIR=$(shell dirname $(BOARD_PATH))
-
-include syn/$(VENDOR)/syn.mk
-
-endif
-
-clean:
-	rm -rf _xmsgs xst xlnx_auto_0_xdb
-	rm -rf *.xst *.xrpt *.srp *.lso *.log *.bld *.lst *.twr *.ise *.map \
-		*.mrp *.ngm *.pcf *.psr *.xml *.pad *.par *.ptwx *.bgn \
-		*.unroutes *.xpi $(PROJECT_NAME)_par_pad* *.xwbt *.html
-
-distclean:
-	rm -rf *.ngc *.ncd *.ngd *.bit
-	make clean
-
-.PHONY: syn
-
+VENDOR=xilinx
+DEVICE_PART=xc3s250e-vq100
+CONSTRAINT_FILE=openbench-logic-sniffer.ucf

@@ -19,6 +19,8 @@
 #
 #------------------------------------------------------------------------------
 
+PROJECT_NAME="logic-sniffer"
+
 function usage() {
 	cat <<EOF
 Usage: ./configure [OPTION]... [VAR=VALUE]...
@@ -53,6 +55,7 @@ done
 
 # Write the configuration out
 cat > config <<EOF
+PROJECT_NAME=$PROJECT_NAME
 BOARD_PATH=$BOARD_PATH
 EOF
 

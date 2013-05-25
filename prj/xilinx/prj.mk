@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------
 #
 # Copyright (C) 2013 Joel Holdsworth
-#
+# 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or (at
@@ -18,35 +18,28 @@
 #
 #------------------------------------------------------------------------------
 
-include config
+PROJECTS = $(PROJECT_NAME)_top.prj
+SRC_DIR = prj/src
+SCRIPTS_DIR = prj/scripts
+XILINX_PRJ_DIR = prj/xilinx
 
-help:
-	@echo "  syn: Synthesize the firmware."
-	@echo ""
-	@echo "  clean: Delete all superfluous files generated during build."
-	@echo "  distclean: Delete all generated files"
+ROOT_DIR=.
 
-ifeq "$(BOARD_PATH)" ""
-syn:
-	$(error Unable to synthesise when no board file has been speified)
-else
+XILINX_PRJ_FILES = $(addprefix $(XILINX_PRJ_DIR)/, \
+	$(addsuffix .prj, $(basename $(PROJECTS))))
+XILINX_XST_FILES = $(addprefix $(XILINX_PRJ_DIR)/, \
+	$(addsuffix .xst, $(basename $(PROJECTS))))
 
-include $(BOARD_PATH)
-CONSTRAINT_DIR=$(shell dirname $(BOARD_PATH))
+$(XILINX_PRJ_DIR)/$(PROJECT_NAME)_top.xst: $(SRC_DIR)/$(PROJECT_NAME)_top.prj
+	bash $(SCRIPTS_DIR)/xilinxxst.sh $(ROOT_DIR) $^ $@ \
+		$(PROJECT_NAME)_top.prj $(PROJECT_NAME)_top topmodule \
+		$(DEVICE_PART)
 
-include syn/$(VENDOR)/syn.mk
+$(XILINX_PRJ_DIR)/$(PROJECT_NAME)_top.prj: $(SRC_DIR)/$(PROJECT_NAME)_top.prj
+	bash $(SCRIPTS_DIR)/xilinxprj.sh $(ROOT_DIR) $^ $@ topmodule
 
-endif
+$(XILINX_PRJ_DIR)/%.xst: $(SRC_DIR)/%.prj
+	bash $(SCRIPTS_DIR)/xilinxxst.sh $(ROOT_DIR) $^ $@ $*.prj $*
 
-clean:
-	rm -rf _xmsgs xst xlnx_auto_0_xdb
-	rm -rf *.xst *.xrpt *.srp *.lso *.log *.bld *.lst *.twr *.ise *.map \
-		*.mrp *.ngm *.pcf *.psr *.xml *.pad *.par *.ptwx *.bgn \
-		*.unroutes *.xpi $(PROJECT_NAME)_par_pad* *.xwbt *.html
-
-distclean:
-	rm -rf *.ngc *.ncd *.ngd *.bit
-	make clean
-
-.PHONY: syn
-
+$(XILINX_PRJ_DIR)/%.prj: $(SRC_DIR)/%.prj
+	bash $(SCRIPTS_DIR)/xilinxprj.sh $(ROOT_DIR) $^ $@

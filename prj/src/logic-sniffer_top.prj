@@ -1,0 +1,30 @@
+PROJECT_DIR=(rtl/)
+PROJECT_SRC=(
+	cdc.v
+	controller.v
+	core.v
+	data_align.v
+	decoder.v
+	delay_fifo.v
+	eia232.v
+	flags.v
+	Logic_Sniffer.v
+	meta.v
+	prescaler.v
+	receiver.v
+	regs.v
+	rle_enc.v
+	sampler.v
+	shifter.v
+	spi_receiver.v
+	spi_slave.v
+	spi_transmitter.v
+	sram_interface.v
+	stage.v
+	sync.v
+	timer.v
+	transmitter.v
+	trigger_adv.v
+	trigger.v
+)
+

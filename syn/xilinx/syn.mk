@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------
 #
 # Copyright (C) 2013 Joel Holdsworth
-#
+# 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or (at
@@ -18,35 +18,31 @@
 #
 #------------------------------------------------------------------------------
 
-include config
+PROJECT_DIR=prj/xilinx
 
-help:
-	@echo "  syn: Synthesize the firmware."
-	@echo ""
-	@echo "  clean: Delete all superfluous files generated during build."
-	@echo "  distclean: Delete all generated files"
+syn: $(PROJECT_NAME).bit
 
-ifeq "$(BOARD_PATH)" ""
-syn:
-	$(error Unable to synthesise when no board file has been speified)
-else
+include prj/xilinx/prj.mk
 
-include $(BOARD_PATH)
-CONSTRAINT_DIR=$(shell dirname $(BOARD_PATH))
+$(PROJECT_NAME)_top.ngc: $(PROJECT_DIR)/$(PROJECT_NAME)_top.xst \
+	$(PROJECT_DIR)/$(PROJECT_NAME)_top.prj
+	rm -rf xst
+	mkdir xst
+	xst -ifn "$(PROJECT_DIR)/$(PROJECT_NAME)_top.xst"
 
-include syn/$(VENDOR)/syn.mk
+$(PROJECT_NAME).ngd: $(CONSTRAINT_DIR)/$(CONSTRAINT_FILE) $(PROJECT_NAME)_top.ngc
+	ngdbuild -p ${DEVICE_PART} -uc $(CONSTRAINT_DIR)/$(CONSTRAINT_FILE) -aul \
+	$(PROJECT_NAME)_top.ngc $(PROJECT_NAME).ngd
 
-endif
+$(PROJECT_NAME).ncd: $(PROJECT_NAME).ngd
+	map -bp -timing -cm speed -equivalent_register_removal on \
+	-logic_opt on -ol high -power off -register_duplication on \
+	-retiming on -w -xe n $(PROJECT_NAME).ngd
 
-clean:
-	rm -rf _xmsgs xst xlnx_auto_0_xdb
-	rm -rf *.xst *.xrpt *.srp *.lso *.log *.bld *.lst *.twr *.ise *.map \
-		*.mrp *.ngm *.pcf *.psr *.xml *.pad *.par *.ptwx *.bgn \
-		*.unroutes *.xpi $(PROJECT_NAME)_par_pad* *.xwbt *.html
+$(PROJECT_NAME)_par.ncd: $(PROJECT_NAME).ncd
+	par -ol high -w -xe n $(PROJECT_NAME).ncd $(PROJECT_NAME)_par.ncd
 
-distclean:
-	rm -rf *.ngc *.ncd *.ngd *.bit
-	make clean
+$(PROJECT_NAME).bit: $(PROJECT_NAME)_par.ncd
+	bitgen -d -w $(PROJECT_NAME)_par.ncd $(PROJECT_NAME).bit
 
-.PHONY: syn
-
+.PHONY: syn_xilinx
