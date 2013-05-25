@@ -1,0 +1,60 @@
+#!/bin/bash
+#------------------------------------------------------------------------------
+#
+# Copyright (C) 2013 Joel Holdsworth
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin St, Fifth Floor, Boston, MA 02110, USA
+#
+#------------------------------------------------------------------------------
+
+function usage() {
+	cat <<EOF
+Usage: ./configure [OPTION]... [VAR=VALUE]...
+
+Sythesis configuration:
+  --board=DIR           The path to the board file to sythesise for. Defaults
+                        to none, in which case sythesis will be disabled.
+
+EOF
+	exit 0;
+}
+
+# Parse command line options
+
+BOARD_DIR=""
+
+OPTS=`getopt -o h -l board:,help -- "$@"`
+if [ $? != 0 ]
+then
+	exit 1
+fi
+
+eval set -- "$OPTS"
+
+while true ; do
+	case "$1" in
+	--board) BOARD_PATH="$2"; shift 2;;
+	-h | --help) usage; break;;
+	--) shift; break;;
+	esac
+done
+
+# Write the configuration out
+cat > config <<EOF
+BOARD_PATH=$BOARD_PATH
+EOF
+
+# Setup the makefile
+cp Makefile.in Makefile
