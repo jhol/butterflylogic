@@ -61,22 +61,14 @@ module cdc #(
   input  wire          ffo_rdy   // ready
 );
 
-`ifdef XILINX_ISE
-
-// Xilinx ISE used to compile the Spartan 3E device does not support the $clog2 function
+//`include "util/clog2.v"
 function integer clog2 (input integer value); begin
   value = value-1;
   for (clog2=0; value>0; clog2=clog2+1)
-  value = value>>1;
+    value = value>>1;
 end endfunction
-localparam CW =  clog2(FF)+1;    // counter width
 
-`else
-
-localparam CW = $clog2(FF)+1;    // counter width
-
-`endif
-
+localparam CW = clog2(FF)+1;    // counter width
 localparam G0 = {1'b1,{CW-1{1'b0}}};
 
 ////////////////////////////////////////////////////////////////////////////////
