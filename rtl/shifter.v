@@ -41,8 +41,14 @@ module shifter #(
   output wire [DW-1:0] sto_data
 );
 
+function integer clog2 (input integer value); begin
+  value = value-1;
+  for (clog2=0; value>0; clog2=clog2+1)
+    value = value>>1;
+end endfunction
+
 // number of data procesing layers
-localparam DL = $clog2(DW);
+localparam DL = clog2(DW);
 
 // input data path signals
 wire sti_transfer;
