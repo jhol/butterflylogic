@@ -10,7 +10,6 @@ PROJECT_SRC=(
 	flags.v
 	logic_sniffer_top.v
 	meta.v
-	prescaler.v
 	receiver.v
 	regs.v
 	rle_enc.v
