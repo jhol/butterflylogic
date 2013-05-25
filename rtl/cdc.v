@@ -61,7 +61,7 @@ module cdc #(
   input  wire          ffo_rdy   // ready
 );
 
-`ifdef XC3S250E
+`ifdef XILINX_ISE
 
 // Xilinx ISE used to compile the Spartan 3E device does not support the $clog2 function
 function integer clog2 (input integer value); begin

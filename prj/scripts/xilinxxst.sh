@@ -86,6 +86,7 @@ cat >> $DIR_OUTPUT <<EOF
 -top ${TOP_MODULE_NAME}
 -opt_mode Speed
 -opt_level 1
+-define {XILINX_ISE}
 EOF
 
 if [ -n "$TOP_MODULE" ]
