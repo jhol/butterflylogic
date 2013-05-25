@@ -1,2 +1,16 @@
 config
 Makefile
+
+xst/
+xlnx_auto_0_xdb/
+
+*.bld
+*.lst
+*.map
+*.mrp
+*.srp
+*.ngc
+*.ngd
+*.ngm
+*.xrpt
+*.xst
