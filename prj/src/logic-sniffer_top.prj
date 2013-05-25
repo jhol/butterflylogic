@@ -8,7 +8,7 @@ PROJECT_SRC=(
 	delay_fifo.v
 	eia232.v
 	flags.v
-	Logic_Sniffer.v
+	logic_sniffer_top.v
 	meta.v
 	prescaler.v
 	receiver.v

@@ -38,7 +38,7 @@
 
 `define COMM_TYPE_SPI 1   // comment out for UART mode
 
-module Logic_Sniffer #(
+module logic_sniffer_top #(
 `ifdef COMM_TYPE_SPI
   parameter [31:0] MEMORY_DEPTH=6,
   parameter [31:0] CLOCK_SPEED=50,
