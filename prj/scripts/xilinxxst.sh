@@ -76,14 +76,18 @@ DIR_PATH="$DIR_PATH }"
 echo $DIR_PATH >> $DIR_OUTPUT
 
 adapted_project_file=`adaptpath $ROOT_DIR/prj/xilinx/${PROJECT_FILE}`
-echo "-ifn $adapted_project_file" >> $DIR_OUTPUT
-echo "-ifmt Verilog" >> $DIR_OUTPUT
-echo "-ofn ${TOP_MODULE_NAME}" >> $DIR_OUTPUT
-echo "-ofmt NGC" >> $DIR_OUTPUT
-echo "-p ${DEVICE_PART}" >> $DIR_OUTPUT
-echo "-top ${TOP_MODULE_NAME}" >> $DIR_OUTPUT
-echo "-opt_mode Speed" >> $DIR_OUTPUT
-echo "-opt_level 1" >> $DIR_OUTPUT
+
+cat >> $DIR_OUTPUT <<EOF
+-ifn $adapted_project_file
+-ifmt Verilog
+-ofn ${TOP_MODULE_NAME}
+-ofmt NGC
+-p ${DEVICE_PART}
+-top ${TOP_MODULE_NAME}
+-opt_mode Speed
+-opt_level 1
+EOF
+
 if [ -n "$TOP_MODULE" ]
 then
 	echo "-iobuf yes" >> $DIR_OUTPUT
