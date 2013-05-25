@@ -33,9 +33,9 @@
 `timescale 1ns/100ps
 
 module transmitter #(
-  parameter [31:0] FREQ = 100000000;
-  parameter [31:0] BAUDRATE = 115200;
-  parameter BITLENGTH = FREQ / BAUDRATE;
+  parameter [31:0] FREQ = 100000000,
+  parameter [31:0] BAUDRATE = 115200,
+  parameter BITLENGTH = FREQ / BAUDRATE
 )(
   input  wire        clock,
   input  wire        trxClock,
