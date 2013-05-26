@@ -42,7 +42,8 @@ clean:
 	rm -rf _xmsgs xst xlnx_auto_0_xdb
 	rm -rf *.xst *.xrpt *.srp *.lso *.log *.bld *.lst *.twr *.ise *.map \
 		*.mrp *.ngm *.pcf *.psr *.xml *.pad *.par *.ptwx *.bgn \
-		*.unroutes *.xpi $(PROJECT_NAME)_par_pad* *.xwbt *.html
+		*.unroutes *.xpi $(PROJECT_NAME)_par_pad* *.xwbt *.html \
+		*.bld *.map *.mrp *.ngd *.ngm *.xrpt *.ngc *.srp *.lst
 
 distclean:
 	rm -rf *.ngc *.ncd *.ngd *.bit
