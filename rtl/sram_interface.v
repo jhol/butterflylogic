@@ -197,7 +197,7 @@ end
 //
 // Instantiate RAM's (each BRAM6kx9bit in turn instantiates three 2kx9's block RAM's)...
 //
-`ifdef XC3S250E
+`ifdef XILINX
 
 genvar i;
 generate
