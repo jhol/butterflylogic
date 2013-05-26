@@ -170,9 +170,9 @@ INST "extData[31]" TNM = "allouts";
 TIMEGRP "allouts" OFFSET = OUT 9 ns AFTER "bf_clock";
 
 ## Put SPI synchronizers as close to respective I/O's as possible...
-INST "spi_slave/spi_sclk_sync/*" AREA_GROUP = "pblock_1";
-INST "spi_slave/spi_cs_n_sync/*" AREA_GROUP = "pblock_1";
-AREA_GROUP "pblock_1" RANGE=SLICE_X34Y0:SLICE_X35Y1;
+#INST "spi_slave/spi_sclk_sync/*" AREA_GROUP = "pblock_1";
+#INST "spi_slave/spi_cs_n_sync/*" AREA_GROUP = "pblock_1";
+#AREA_GROUP "pblock_1" RANGE=SLICE_X34Y0:SLICE_X35Y1;
 
 ## Add jitter uncertainy to clock...
 SYSTEM_JITTER = 0.2 ns;
